@@ -1,4 +1,4 @@
-# Application Web de Transfert de Fichiers Bluetooth
+# Application Web de Transfert de Fichiers Bluetooth <img src="https://raw.githubusercontent.com/erikraft/Bluetooth-File-Transfer-to-Web/refs/heads/main/assets/Bluetooth.png" align="right" width="100">
 
 Ceci est une application simple **Web Bluetooth** qui permet à deux appareils Bluetooth de :
 

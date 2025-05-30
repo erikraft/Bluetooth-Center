@@ -1,30 +1,15 @@
+
 body {
-  font-family: sans-serif;
-  text-align: center;
-  padding: 2rem;
-  background: #f5f5f5;
+  font-family: Arial, sans-serif;
+  margin: 20px;
+  background: #f0f0f0;
 }
 h1 {
-  margin-bottom: 1rem;
+  color: #333;
 }
 .controls {
-  margin-bottom: 1.5rem;
+  margin: 20px 0;
 }
-button, input[type="file"] {
-  margin: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
-}
-#log {
-  text-align: left;
-  max-width: 600px;
-  margin: 0 auto;
-  background: #fff;
-  padding: 1rem;
-  border-radius: 8px;
-  box-shadow: 0 0 5px rgba(0,0,0,0.1);
-  height: 200px;
-  overflow-y: auto;
-  font-family: monospace;
-  font-size: 0.9rem;
+button {
+  margin-right: 10px;
 }

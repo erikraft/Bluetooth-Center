@@ -5,20 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Bluetooth File Transfer</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/png" href="assets/Bluetooth.png" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#2196f3">
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(() => console.log('Service Worker registrado'));
+    }
+  </script>
 </head>
 <body>
-  <h1>Bluetooth File Transfer Web App</h1>
+  <h1>
+    <img src="assets/Bluetooth.png" alt="Icon" style="height: 32px; vertical-align: middle; margin-right: 10px;">
+    Bluetooth File Transfer Web App
+  </h1>
 
   <div class="controls">
     <button id="btn-connect">Conectar Bluetooth</button>
     <input type="file" id="file-input" />
     <button id="btn-send" disabled>Enviar Arquivo</button>
+    <input type="text" id="text-input" placeholder="Digite sua mensagem" />
+    <button id="btn-send-text" disabled>Enviar Texto</button>
   </div>
 
   <audio id="connected-sound" src="assets/connected.mp3" preload="auto"></audio>
-
   <div id="log"></div>
-
   <script src="script.js"></script>
 </body>
 </html>

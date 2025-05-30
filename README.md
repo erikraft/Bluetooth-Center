@@ -1,4 +1,4 @@
-# Bluetooth File Transfer Web App
+# Bluetooth File Transfer Web App <img src="https://raw.githubusercontent.com/erikraft/Bluetooth-File-Transfer-to-Web/refs/heads/main/assets/Bluetooth.png" align="right" width="100">
 
 This is a simple **Web Bluetooth application** that allows two Bluetooth-enabled devices to:
 

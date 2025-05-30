@@ -27,3 +27,7 @@ Make sure your BLE peripheral uses the same UUIDs below:
 const SERVICE_UUID        = '8e7c12e0-5f9b-4b57-b6e0-07c58b4fd328';
 const WRITE_CHAR_UUID     = '77f57404-5e34-42e7-9502-3f6a3a0e091b';
 const NOTIFY_CHAR_UUID    = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
+```
+
+📘 This project is available in two languages:
+🇧🇷 [Ler em Português](README-ptbr.md)｜🇺🇸 [Read in English](README.md)

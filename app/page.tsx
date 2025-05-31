@@ -466,9 +466,10 @@ export default function BluetoothCenter() {
             "heart_rate",
             "fitness_machine",
             "human_interface_device",
-            "audio_sink",
+            "0000110B-0000-1000-8000-00805F9B34FB", // Audio Sink
             "generic_access",
             "generic_attribute",
+            "8e7c12e0-5f9b-4b57-b6e0-07c58b4fd328", // Custom service UUID
           ],
         })
 
@@ -600,7 +601,8 @@ export default function BluetoothCenter() {
             "heart_rate",
             "fitness_machine",
             "human_interface_device",
-            "audio_sink",
+            "0000110B-0000-1000-8000-00805F9B34FB", // Audio Sink
+            "8e7c12e0-5f9b-4b57-b6e0-07c58b4fd328", // Custom service UUID
           ],
         })
 
@@ -1271,9 +1273,10 @@ export default function BluetoothCenter() {
                               "heart_rate",
                               "fitness_machine",
                               "human_interface_device",
-                              "audio_sink",
+                              "0000110B-0000-1000-8000-00805F9B34FB", // Audio Sink
                               "generic_access",
                               "generic_attribute",
+                              "8e7c12e0-5f9b-4b57-b6e0-07c58b4fd328", // Custom service UUID
                             ],
                           })
 

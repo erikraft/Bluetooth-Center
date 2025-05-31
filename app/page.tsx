@@ -106,7 +106,12 @@ export default function BluetoothCenter() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+<<<<<<< HEAD
   const [activeTab, setActiveTab] = useState("devices")
+=======
+
+  // PWA States
+>>>>>>> a24b16f04b3df5eb6b945b7a4f9253ebb1310e02
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isInstallable, setIsInstallable] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
@@ -129,6 +134,7 @@ export default function BluetoothCenter() {
       setBluetoothSupported(false)
     }
 
+<<<<<<< HEAD
     // PWA Install Events - Capturar o evento beforeinstallprompt
     const handleBeforeInstallPrompt = (e: any) => {
       // Impedir o comportamento padrão
@@ -136,10 +142,17 @@ export default function BluetoothCenter() {
       // Armazenar o evento para uso posterior
       setDeferredPrompt(e)
       console.log("Evento beforeinstallprompt capturado e armazenado")
+=======
+    // PWA Install Events
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault()
+      setDeferredPrompt(e)
+>>>>>>> a24b16f04b3df5eb6b945b7a4f9253ebb1310e02
       setIsInstallable(true)
     }
 
     const handleAppInstalled = () => {
+<<<<<<< HEAD
       console.log("App foi instalado com sucesso")
       setIsInstalled(true)
       setIsInstallable(false)
@@ -164,6 +177,17 @@ export default function BluetoothCenter() {
     }
 
     // Adicionar listeners para eventos de instalação
+=======
+      setIsInstalled(true)
+      setIsInstallable(false)
+      setDeferredPrompt(null)
+    }
+
+    if (typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches) {
+      setIsInstalled(true)
+    }
+
+>>>>>>> a24b16f04b3df5eb6b945b7a4f9253ebb1310e02
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
     window.addEventListener("appinstalled", handleAppInstalled)
 
@@ -344,6 +368,7 @@ export default function BluetoothCenter() {
   }
 
   const installPWA = async () => {
+<<<<<<< HEAD
     console.log("Botão de instalação clicado", {
       temPrompt: !!deferredPrompt,
       isInstallable,
@@ -388,6 +413,14 @@ export default function BluetoothCenter() {
       }
 
       setTimeout(() => setSuccess(null), 5000)
+=======
+    if (!deferredPrompt) return
+    deferredPrompt.prompt()
+    const { outcome } = await deferredPrompt.userChoice
+    if (outcome === "accepted") {
+      setIsInstallable(false)
+      setDeferredPrompt(null)
+>>>>>>> a24b16f04b3df5eb6b945b7a4f9253ebb1310e02
     }
   }
 
@@ -396,6 +429,7 @@ export default function BluetoothCenter() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-3 py-3 sm:px-4 sm:py-4">
+<<<<<<< HEAD
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -435,6 +469,40 @@ export default function BluetoothCenter() {
                 >
                   <Download className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="ml-1 sm:ml-2 text-xs sm:text-sm">Instalar</span>
+=======
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Bluetooth className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900">Bluetooth Center</h1>
+                <p className="text-xs sm:text-sm text-gray-600">Centro completo de transferências Bluetooth</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* Status Indicators */}
+              <div className="flex gap-1 sm:gap-2">
+                <Badge variant={isOnline ? "default" : "secondary"} className="flex items-center gap-1 text-xs">
+                  {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+                  {isOnline ? "Online" : "Offline"}
+                </Badge>
+                <Badge
+                  variant={bluetoothEnabled ? "default" : "destructive"}
+                  className="flex items-center gap-1 text-xs"
+                >
+                  <Bluetooth className="w-3 h-3" />
+                  {bluetoothEnabled ? "Ativo" : "Inativo"}
+                </Badge>
+              </div>
+
+              {/* PWA Install */}
+              {isInstallable && (
+                <Button onClick={installPWA} size="sm" className="text-xs">
+                  <Download className="w-3 h-3 mr-1 sm:w-4 sm:h-4 sm:mr-2" />
+                  Instalar
+>>>>>>> a24b16f04b3df5eb6b945b7a4f9253ebb1310e02
                 </Button>
               )}
             </div>
@@ -459,6 +527,7 @@ export default function BluetoothCenter() {
           </Alert>
         )}
 
+<<<<<<< HEAD
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Desktop Tabs */}
           <div className="hidden sm:block">
@@ -515,6 +584,36 @@ export default function BluetoothCenter() {
               </TabsList>
             </div>
           </div>
+=======
+        <Tabs defaultValue="devices" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1">
+            <TabsTrigger value="devices" className="flex items-center gap-1 text-xs sm:text-sm px-1 sm:px-3">
+              <Bluetooth className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Dispositivos</span>
+              <span className="sm:hidden">Disp.</span>
+            </TabsTrigger>
+            <TabsTrigger value="transfers" className="flex items-center gap-1 text-xs sm:text-sm px-1 sm:px-3">
+              <Upload className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Transferências</span>
+              <span className="sm:hidden">Transf.</span>
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex items-center gap-1 text-xs sm:text-sm px-1 sm:px-3">
+              <History className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Histórico</span>
+              <span className="sm:hidden">Hist.</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-1 text-xs sm:text-sm px-1 sm:px-3">
+              <Settings className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Configurações</span>
+              <span className="sm:hidden">Config.</span>
+            </TabsTrigger>
+            <TabsTrigger value="info" className="flex items-center gap-1 text-xs sm:text-sm px-1 sm:px-3">
+              <Info className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Informações</span>
+              <span className="sm:hidden">Info</span>
+            </TabsTrigger>
+          </TabsList>
+>>>>>>> a24b16f04b3df5eb6b945b7a4f9253ebb1310e02
 
           {/* Devices Tab */}
           <TabsContent value="devices" className="space-y-6">
@@ -634,6 +733,7 @@ export default function BluetoothCenter() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
+<<<<<<< HEAD
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {devices
                       .filter((d) => !d.connected)
@@ -1058,3 +1158,6 @@ export default function BluetoothCenter() {
     </div>
   )
 }
+=======
+                  <div className="grid 
+>>>>>>> a24b16f04b3df5eb6b945b7a4f9253ebb1310e02

@@ -466,10 +466,13 @@ export default function BluetoothCenter() {
             "heart_rate",
             "fitness_machine",
             "human_interface_device",
-            "0000110B-0000-1000-8000-00805F9B34FB", // Audio Sink
+            "0000110b-0000-1000-8000-00805f9b34fb", // Audio Sink (corrigido para minúsculas)
             "generic_access",
             "generic_attribute",
-            "8e7c12e0-5f9b-4b57-b6e0-07c58b4fd328", // Custom service UUID
+            "0000180f-0000-1000-8000-00805f9b34fb", // Battery Service UUID
+            "0000180a-0000-1000-8000-00805f9b34fb", // Device Information Service
+            "0000180d-0000-1000-8000-00805f9b34fb", // Heart Rate Service
+            "00001812-0000-1000-8000-00805f9b34fb", // Human Interface Device
           ],
         })
 
@@ -601,8 +604,11 @@ export default function BluetoothCenter() {
             "heart_rate",
             "fitness_machine",
             "human_interface_device",
-            "0000110B-0000-1000-8000-00805F9B34FB", // Audio Sink
-            "8e7c12e0-5f9b-4b57-b6e0-07c58b4fd328", // Custom service UUID
+            "0000110b-0000-1000-8000-00805f9b34fb", // Audio Sink (corrigido para minúsculas)
+            "0000180f-0000-1000-8000-00805f9b34fb", // Battery Service UUID
+            "0000180a-0000-1000-8000-00805f9b34fb", // Device Information Service
+            "0000180d-0000-1000-8000-00805f9b34fb", // Heart Rate Service
+            "00001812-0000-1000-8000-00805f9b34fb", // Human Interface Device
           ],
         })
 
@@ -1273,10 +1279,13 @@ export default function BluetoothCenter() {
                               "heart_rate",
                               "fitness_machine",
                               "human_interface_device",
-                              "0000110B-0000-1000-8000-00805F9B34FB", // Audio Sink
+                              "0000110b-0000-1000-8000-00805f9b34fb", // Audio Sink (corrigido para minúsculas)
                               "generic_access",
                               "generic_attribute",
-                              "8e7c12e0-5f9b-4b57-b6e0-07c58b4fd328", // Custom service UUID
+                              "0000180f-0000-1000-8000-00805f9b34fb", // Battery Service UUID
+                              "0000180a-0000-1000-8000-00805f9b34fb", // Device Information Service
+                              "0000180d-0000-1000-8000-00805f9b34fb", // Heart Rate Service
+                              "00001812-0000-1000-8000-00805f9b34fb", // Human Interface Device
                             ],
                           })
 

@@ -92,3 +92,41 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Melhorias para dispositivos móveis */
+@media (max-width: 640px) {
+  /* Ajustar tamanho de texto para evitar sobreposição */
+  .text-xs {
+    font-size: 0.7rem;
+  }
+
+  /* Garantir que textos longos quebrem corretamente */
+  .break-all {
+    word-break: break-all;
+  }
+
+  /* Reduzir padding em cards para dispositivos móveis */
+  .card-content-mobile {
+    padding: 0.75rem !important;
+  }
+
+  /* Ajustar botões para caber em telas pequenas */
+  .btn-mobile {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* Garantir que o conteúdo não ultrapasse os limites da tela */
+.max-w-full {
+  max-width: 100%;
+}
+
+/* Melhorar visualização de texto longo */
+.truncate-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}

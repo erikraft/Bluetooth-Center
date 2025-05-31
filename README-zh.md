@@ -1,4 +1,4 @@
-# 蓝牙文件传输网页应用 <img src="https://raw.githubusercontent.com/erikraft/Bluetooth-File-Transfer-to-Web/refs/heads/main/assets/Bluetooth.png" align="right" width="100">
+# 蓝牙文件传输网页应用 <img src="./public/favicon-32x32.png" align="right" width="100">
 
 这是一个简单的**Web 蓝牙**应用程序，允许两个支持蓝牙的设备：
 

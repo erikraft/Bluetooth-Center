@@ -162,6 +162,7 @@ export default function BluetoothCenter() {
   const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [volume, setVolume] = useState(50)
+  const [sourceApp, setSourceApp] = useState("Spotify Web Player")
   const [playlist] = useState<MusicTrack[]>([
     { id: "1", title: "Música Exemplo 1", artist: "Artista 1", duration: 180, currentTime: 0 },
     { id: "2", title: "Música Exemplo 2", artist: "Artista 2", duration: 240, currentTime: 0 },
@@ -1076,6 +1077,47 @@ export default function BluetoothCenter() {
                 <div className="text-center">
                   <p className="font-medium text-sm">{currentTrack.title}</p>
                   <p className="text-xs text-gray-600">{currentTrack.artist}</p>
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  <Button size="sm" variant="ghost" onClick={prevTrack}>
+                    <SkipBack className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" onClick={playPause}>
+                    {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={nextTrack}>
+                    <SkipForward className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span>{formatTime(currentTrack.currentTime)}</span>
+                  <Progress value={(currentTrack.currentTime / currentTrack.duration) * 100} className="flex-1" />
+                  <span>{formatTime(currentTrack.duration)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Volume2 className="w-4 h-4" />
+                  <Progress value={volume} className="flex-1" />
+                  <span className="text-xs">{volume}%</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600">Nenhuma música selecionada</p>
+            )}
+          </div>
+        )
+      case "speaker":
+        return (
+          <div className="mt-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
+            <h4 className="font-semibold text-orange-800 mb-2 flex items-center gap-2">
+              <Music className="w-4 h-4" />
+              Reprodução de Áudio
+            </h4>
+            {currentTrack ? (
+              <div className="space-y-3">
+                <div className="text-center">
+                  <p className="font-medium text-sm">{currentTrack.title}</p>
+                  <p className="text-xs text-gray-600">{currentTrack.artist}</p>
+                  <p className="text-xs text-gray-500 italic">Reproduzido por: {sourceApp}</p>
                 </div>
                 <div className="flex items-center justify-center gap-2">
                   <Button size="sm" variant="ghost" onClick={prevTrack}>

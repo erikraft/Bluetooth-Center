@@ -493,17 +493,23 @@ export default function BluetoothCenter() {
 
     // Disconnect all connected devices on page unload
     const handleBeforeUnload = () => {
+      // Disconnect devices
       devices.forEach((device) => {
         if (device.connected) {
           disconnectDevice(device.id)
         }
       })
-      // Update localStorage cache to mark all devices as disconnected to avoid stale state
+
+      // Clear devices and deviceCache state immediately
+      setDevices([])
+      setDeviceCache([])
+
+      // Clear localStorage cache to avoid stale state
       try {
-        const updatedCache = devices.map((device) => ({ ...device, connected: false }))
-        localStorage.setItem("bluetoothDeviceCache", JSON.stringify(updatedCache))
+        localStorage.removeItem("bluetoothDeviceCache")
+        localStorage.removeItem("customDeviceNames")
       } catch (error) {
-        console.error("Erro ao atualizar cache no unload:", error)
+        console.error("Erro ao limpar cache no unload:", error)
       }
     }
 

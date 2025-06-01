@@ -52,6 +52,7 @@ import {
   MessageSquare,
   Phone,
   Music,
+  Edit3,
 } from "lucide-react"
 import { SnakeGame } from "@/components/snake-game"
 
@@ -309,7 +310,7 @@ export default function BluetoothCenter() {
       setBluetoothSupported(false)
     }
 
-    // PWA Install Events com melhorias
+    // PWA Install Events com melhorias específicas para Chrome Mobile
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault()
       setDeferredPrompt(e)
@@ -332,10 +333,12 @@ export default function BluetoothCenter() {
       setTimeout(() => setSuccess(null), 4000)
     }
 
-    // Verificar se já está instalado
+    // Verificar se já está instalado - melhorado para Chrome Mobile
     if (typeof window !== "undefined") {
       const isStandalone =
         window.matchMedia("(display-mode: standalone)").matches ||
+        window.matchMedia("(display-mode: minimal-ui)").matches ||
+        window.matchMedia("(display-mode: fullscreen)").matches ||
         (window.navigator as any).standalone === true ||
         document.referrer.includes("android-app://")
 
@@ -1546,7 +1549,7 @@ export default function BluetoothCenter() {
                                           }}
                                           className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                         >
-                                          ✏️
+                                          <Edit3 className="w-3 h-3" />
                                         </Button>
                                       </div>
                                     )}
@@ -1677,7 +1680,7 @@ export default function BluetoothCenter() {
                                           }}
                                           className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                         >
-                                          ✏️
+                                          <Edit3 className="w-3 h-3" />
                                         </Button>
                                       </div>
                                     )}
@@ -2023,7 +2026,7 @@ export default function BluetoothCenter() {
                                   }}
                                   className="h-8 w-8 p-0"
                                 >
-                                  ✏️
+                                  <Edit3 className="w-3 h-3" />
                                 </Button>
                                 <Button
                                   size="sm"

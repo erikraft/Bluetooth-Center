@@ -3,31 +3,22 @@ import type { MetadataRoute } from "next"
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Bluetooth Center",
-    short_name: "BluetoothCenter",
+    short_name: "Bluetooth Center",
     description: "Centro completo de transferências Bluetooth - Funciona 100% offline",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#0041a3",
-    orientation: "portrait",
+    theme_color: "#1e40af",
+    orientation: "portrait-primary",
     scope: "/",
     categories: ["utilities", "productivity", "tools"],
     lang: "pt-BR",
     dir: "ltr",
     prefer_related_applications: false,
+    // Configurações específicas para PWA adequada
+    display_override: ["standalone", "minimal-ui", "browser"],
     icons: [
-      {
-        src: "/bluetooth-logo.png",
-        sizes: "192x192",
-        type: "image/png",
-        purpose: "maskable",
-      },
-      {
-        src: "/bluetooth-logo.png",
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "maskable",
-      },
+      // Ícones principais para PWA
       {
         src: "/bluetooth-logo.png",
         sizes: "192x192",
@@ -40,24 +31,20 @@ export default function manifest(): MetadataRoute.Manifest {
         type: "image/png",
         purpose: "any",
       },
+      // Ícones maskable para Android
       {
         src: "/bluetooth-logo.png",
-        sizes: "16x16",
+        sizes: "192x192",
         type: "image/png",
-        purpose: "any",
+        purpose: "maskable",
       },
       {
         src: "/bluetooth-logo.png",
-        sizes: "32x32",
+        sizes: "512x512",
         type: "image/png",
-        purpose: "any",
+        purpose: "maskable",
       },
-      {
-        src: "/bluetooth-logo.png",
-        sizes: "48x48",
-        type: "image/png",
-        purpose: "any",
-      },
+      // Ícones adicionais para melhor compatibilidade
       {
         src: "/bluetooth-logo.png",
         sizes: "72x72",
@@ -72,13 +59,19 @@ export default function manifest(): MetadataRoute.Manifest {
       },
       {
         src: "/bluetooth-logo.png",
+        sizes: "128x128",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/bluetooth-logo.png",
         sizes: "144x144",
         type: "image/png",
         purpose: "any",
       },
       {
         src: "/bluetooth-logo.png",
-        sizes: "256x256",
+        sizes: "152x152",
         type: "image/png",
         purpose: "any",
       },
@@ -95,24 +88,14 @@ export default function manifest(): MetadataRoute.Manifest {
         sizes: "1280x720",
         type: "image/png",
         label: "Tela principal do Bluetooth Center",
+        form_factor: "wide",
       },
       {
         src: "/screenshot-2.png",
         sizes: "1280x720",
         type: "image/png",
         label: "Transferência de arquivos via Bluetooth",
-      },
-    ],
-    // Configurações PWA avançadas
-    display_override: ["window-controls-overlay", "standalone", "minimal-ui"],
-    edge_side_panel: {
-      preferred_width: 400,
-    },
-    // Protocolo personalizado para abrir arquivos
-    protocol_handlers: [
-      {
-        protocol: "bluetooth",
-        url: "/?protocol=%s",
+        form_factor: "wide",
       },
     ],
     // Configurações de compartilhamento
@@ -129,9 +112,17 @@ export default function manifest(): MetadataRoute.Manifest {
         ],
       },
     },
-    // Configurações offline
-    offline_enabled: true,
-    // Configurações de cache
-    cache_strategy: "CacheFirst",
+    // Protocolo personalizado
+    protocol_handlers: [
+      {
+        protocol: "bluetooth",
+        url: "/?protocol=%s",
+      },
+    ],
+    // Configurações específicas para instalação adequada
+    id: "/",
+    launch_handler: {
+      client_mode: "navigate-existing",
+    },
   }
 }

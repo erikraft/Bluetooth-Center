@@ -192,7 +192,17 @@ if ('caches' in window) {
           }}
         />
       </head>
-      <body className={inter.className}>{children}</body>
+<body className={inter.className}>
+  {children}
+  <script
+    dangerouslySetInnerHTML={{
+      __html: `
+        // This script is already in layout.tsx for service worker registration and other logic
+      `,
+    }}
+  />
+  <div id="pwa-install-button-root"></div>
+</body>
     </html>
   )
 }

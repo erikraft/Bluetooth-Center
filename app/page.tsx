@@ -51,6 +51,8 @@ import {
   Phone,
   Music,
   Edit3,
+  Shield,
+  Globe,
 } from "lucide-react"
 import { SnakeGame } from "@/components/snake-game"
 

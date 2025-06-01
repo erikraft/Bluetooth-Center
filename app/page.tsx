@@ -197,17 +197,107 @@ export default function BluetoothCenter() {
   const [activeGame, setActiveGame] = useState<string | null>(null)
   const [gameScore, setGameScore] = useState(0)
 
+  // Adicionar após os outros estados
+  const [deviceCache, setDeviceCache] = useState<BluetoothDevice[]>([])
+  const [customDeviceNames, setCustomDeviceNames] = useState<Record<string, string>>({})
+  const [editingDeviceName, setEditingDeviceName] = useState<string | null>(null)
+  const [tempDeviceName, setTempDeviceName] = useState("")
+
+  // Adicionar após as outras funções utilitárias
+  const saveToLocalStorage = () => {
+    try {
+      localStorage.setItem("bluetoothDeviceCache", JSON.stringify(deviceCache))
+      localStorage.setItem("customDeviceNames", JSON.stringify(customDeviceNames))
+      localStorage.setItem("deviceName", deviceName)
+    } catch (error) {
+      console.error("Erro ao salvar no localStorage:", error)
+    }
+  }
+
+  const loadFromLocalStorage = () => {
+    try {
+      const cachedDevices = localStorage.getItem("bluetoothDeviceCache")
+      const cachedNames = localStorage.getItem("customDeviceNames")
+      const cachedDeviceName = localStorage.getItem("deviceName")
+
+      if (cachedDevices) {
+        const parsedDevices = JSON.parse(cachedDevices)
+        setDeviceCache(parsedDevices)
+        setDevices(parsedDevices)
+      }
+
+      if (cachedNames) {
+        setCustomDeviceNames(JSON.parse(cachedNames))
+      }
+
+      if (cachedDeviceName) {
+        setDeviceName(cachedDeviceName)
+      }
+    } catch (error) {
+      console.error("Erro ao carregar do localStorage:", error)
+    }
+  }
+
+  const getDisplayName = (device: BluetoothDevice) => {
+    return customDeviceNames[device.id] || device.name
+  }
+
+  const updateDeviceName = (deviceId: string, newName: string) => {
+    const updatedNames = { ...customDeviceNames, [deviceId]: newName }
+    setCustomDeviceNames(updatedNames)
+
+    // Atualizar também no cache
+    const updatedCache = deviceCache.map((d) => (d.id === deviceId ? { ...d, name: newName } : d))
+    setDeviceCache(updatedCache)
+
+    // Salvar no localStorage
+    try {
+      localStorage.setItem("customDeviceNames", JSON.stringify(updatedNames))
+      localStorage.setItem("bluetoothDeviceCache", JSON.stringify(updatedCache))
+    } catch (error) {
+      console.error("Erro ao salvar nome personalizado:", error)
+    }
+  }
+
+  const saveDeviceToCache = (device: BluetoothDevice) => {
+    const updatedCache = [...deviceCache]
+    const existingIndex = updatedCache.findIndex((d) => d.id === device.id)
+
+    if (existingIndex >= 0) {
+      updatedCache[existingIndex] = { ...device, lastSeen: new Date() }
+    } else {
+      updatedCache.push(device)
+    }
+
+    setDeviceCache(updatedCache)
+
+    try {
+      localStorage.setItem("bluetoothDeviceCache", JSON.stringify(updatedCache))
+    } catch (error) {
+      console.error("Erro ao salvar dispositivo no cache:", error)
+    }
+  }
+
   useEffect(() => {
     const updateOnlineStatus = () => {
+      const wasOffline = !isOnline
       setIsOnline(navigator.onLine)
-      if (navigator.onLine) {
-        setSuccess("Conexão com internet restaurada!")
-        setTimeout(() => setSuccess(null), 3000)
-      } else {
-        setError("Sem conexão com internet - Modo offline ativo")
-        setTimeout(() => setError(null), 3000)
+
+      if (navigator.onLine && wasOffline) {
+        setSuccess("Conexão restaurada! Sincronizando dados...")
+        // Tentar sincronizar dados quando voltar online
+        setTimeout(() => {
+          setSuccess("Dados sincronizados com sucesso!")
+          setTimeout(() => setSuccess(null), 3000)
+        }, 2000)
+      } else if (!navigator.onLine) {
+        setError("Modo offline ativo - Todas as funcionalidades disponíveis")
+        setTimeout(() => setError(null), 5000)
       }
     }
+
+    // Verificar status inicial
+    setIsOnline(navigator.onLine)
 
     window.addEventListener("online", updateOnlineStatus)
     window.addEventListener("offline", updateOnlineStatus)
@@ -219,21 +309,27 @@ export default function BluetoothCenter() {
       setBluetoothSupported(false)
     }
 
-    // PWA Install Events
+    // PWA Install Events com melhorias
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault()
       setDeferredPrompt(e)
-      console.log("Evento beforeinstallprompt capturado e armazenado")
+      console.log("PWA: Install prompt ready")
       setIsInstallable(true)
+
+      // Mostrar dica sobre instalação offline
+      if (!navigator.onLine) {
+        setSuccess("App pode ser instalado mesmo offline! Clique em 'Instalar'")
+        setTimeout(() => setSuccess(null), 5000)
+      }
     }
 
     const handleAppInstalled = () => {
-      console.log("App foi instalado com sucesso")
+      console.log("PWA: App installed successfully")
       setIsInstalled(true)
       setIsInstallable(false)
       setDeferredPrompt(null)
-      setSuccess("Aplicativo instalado com sucesso!")
-      setTimeout(() => setSuccess(null), 3000)
+      setSuccess("App instalado! Agora funciona 100% offline 🎉")
+      setTimeout(() => setSuccess(null), 4000)
     }
 
     // Verificar se já está instalado
@@ -248,6 +344,16 @@ export default function BluetoothCenter() {
       if (!isStandalone) {
         setIsInstallable(true)
       }
+
+      // Verificar se é primeira visita offline
+      const isFirstVisit = !localStorage.getItem("bluetoothCenterVisited")
+      if (isFirstVisit) {
+        localStorage.setItem("bluetoothCenterVisited", "true")
+        if (!navigator.onLine) {
+          setSuccess("Bem-vindo! Este app funciona completamente offline 🚀")
+          setTimeout(() => setSuccess(null), 5000)
+        }
+      }
     }
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
@@ -255,6 +361,9 @@ export default function BluetoothCenter() {
 
     // Criar elemento de áudio
     audioRef.current = new Audio("/connected.mp3")
+
+    // Carregar dados salvos
+    loadFromLocalStorage()
 
     // Simular dados do relógio em tempo real
     const watchInterval = setInterval(() => {
@@ -310,9 +419,9 @@ export default function BluetoothCenter() {
     // Gamepad polling
     const gamepadInterval = setInterval(detectGamepads, 100)
 
-    // Scan automático ao carregar a página
+    // Scan automático ao carregar a página (apenas se online)
     const autoScan = async () => {
-      if (navigator.bluetooth) {
+      if (navigator.bluetooth && navigator.onLine) {
         try {
           const availability = await navigator.bluetooth.getAvailability()
           if (availability) {
@@ -351,6 +460,10 @@ export default function BluetoothCenter() {
         } catch (err) {
           console.log("Bluetooth não disponível para scan automático")
         }
+      } else if (!navigator.onLine) {
+        // Se offline, mostrar mensagem informativa
+        setSuccess("Modo offline: Dispositivos salvos carregados do cache local")
+        setTimeout(() => setSuccess(null), 4000)
       }
     }
 
@@ -495,6 +608,8 @@ export default function BluetoothCenter() {
             if (exists) return prev
             return [...prev, newDevice]
           })
+
+          saveDeviceToCache(newDevice)
 
           setSuccess("Novo dispositivo encontrado!")
         }
@@ -643,6 +758,11 @@ export default function BluetoothCenter() {
         setSuccess("Controle conectado! Jogos e testes disponíveis.")
       } else {
         setSuccess("Dispositivo conectado com sucesso!")
+      }
+
+      const updatedDevice = devices.find((d) => d.id === deviceId)
+      if (updatedDevice) {
+        saveDeviceToCache({ ...updatedDevice, connected: true, paired: true })
       }
 
       setTimeout(() => setSuccess(null), 3000)
@@ -1108,6 +1228,17 @@ export default function BluetoothCenter() {
     }
   }
 
+  const saveDeviceName = () => {
+    try {
+      localStorage.setItem("deviceName", deviceName)
+      setSuccess("Nome do dispositivo salvo com sucesso!")
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (error) {
+      setError("Erro ao salvar nome do dispositivo")
+      setTimeout(() => setError(null), 3000)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
@@ -1364,7 +1495,61 @@ export default function BluetoothCenter() {
                                     <DeviceIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                                   </div>
                                   <div>
-                                    <h3 className="font-semibold text-sm sm:text-base text-gray-900">{device.name}</h3>
+                                    {editingDeviceName === device.id ? (
+                                      <div className="flex items-center gap-2">
+                                        <Input
+                                          value={tempDeviceName}
+                                          onChange={(e) => setTempDeviceName(e.target.value)}
+                                          className="text-sm h-8"
+                                          onKeyPress={(e) => {
+                                            if (e.key === "Enter") {
+                                              updateDeviceName(device.id, tempDeviceName)
+                                              setEditingDeviceName(null)
+                                              setTempDeviceName("")
+                                            }
+                                          }}
+                                        />
+                                        <Button
+                                          size="sm"
+                                          onClick={() => {
+                                            updateDeviceName(device.id, tempDeviceName)
+                                            setEditingDeviceName(null)
+                                            setTempDeviceName("")
+                                          }}
+                                          className="h-8 px-2"
+                                        >
+                                          ✓
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => {
+                                            setEditingDeviceName(null)
+                                            setTempDeviceName("")
+                                          }}
+                                          className="h-8 px-2"
+                                        >
+                                          ✕
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <h3 className="font-semibold text-sm sm:text-base text-gray-900">
+                                          {getDisplayName(device)}
+                                        </h3>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => {
+                                            setEditingDeviceName(device.id)
+                                            setTempDeviceName(getDisplayName(device))
+                                          }}
+                                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                          ✏️
+                                        </Button>
+                                      </div>
+                                    )}
                                     <p className="text-xs sm:text-sm text-gray-600">Conectado</p>
                                   </div>
                                 </div>
@@ -1441,7 +1626,61 @@ export default function BluetoothCenter() {
                                     <DeviceIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                                   </div>
                                   <div>
-                                    <h3 className="font-semibold text-sm sm:text-base text-gray-900">{device.name}</h3>
+                                    {editingDeviceName === device.id ? (
+                                      <div className="flex items-center gap-2">
+                                        <Input
+                                          value={tempDeviceName}
+                                          onChange={(e) => setTempDeviceName(e.target.value)}
+                                          className="text-sm h-8"
+                                          onKeyPress={(e) => {
+                                            if (e.key === "Enter") {
+                                              updateDeviceName(device.id, tempDeviceName)
+                                              setEditingDeviceName(null)
+                                              setTempDeviceName("")
+                                            }
+                                          }}
+                                        />
+                                        <Button
+                                          size="sm"
+                                          onClick={() => {
+                                            updateDeviceName(device.id, tempDeviceName)
+                                            setEditingDeviceName(null)
+                                            setTempDeviceName("")
+                                          }}
+                                          className="h-8 px-2"
+                                        >
+                                          ✓
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => {
+                                            setEditingDeviceName(null)
+                                            setTempDeviceName("")
+                                          }}
+                                          className="h-8 px-2"
+                                        >
+                                          ✕
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <h3 className="font-semibold text-sm sm:text-base text-gray-900">
+                                          {getDisplayName(device)}
+                                        </h3>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => {
+                                            setEditingDeviceName(device.id)
+                                            setTempDeviceName(getDisplayName(device))
+                                          }}
+                                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                          ✏️
+                                        </Button>
+                                      </div>
+                                    )}
                                     <p className="text-xs sm:text-sm text-gray-600">
                                       {device.paired ? "Pareado" : "Disponível"}
                                     </p>
@@ -1666,13 +1905,21 @@ export default function BluetoothCenter() {
                     <Label htmlFor="device-name" className="text-sm">
                       Nome do Dispositivo
                     </Label>
-                    <Input
-                      id="device-name"
-                      value={deviceName}
-                      onChange={(e) => setDeviceName(e.target.value)}
-                      placeholder="Nome que outros dispositivos verão"
-                      className="text-sm"
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="device-name"
+                        value={deviceName}
+                        onChange={(e) => setDeviceName(e.target.value)}
+                        placeholder="Nome que outros dispositivos verão"
+                        className="text-sm flex-1"
+                      />
+                      <Button onClick={saveDeviceName} size="sm" className="px-4">
+                        Salvar
+                      </Button>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Este nome será exibido para outros dispositivos quando eles procurarem por você
+                    </p>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -1745,6 +1992,89 @@ export default function BluetoothCenter() {
                         <div className="text-xs sm:text-sm text-gray-600">Transferências</div>
                       </div>
                     </div>
+                  </div>
+                  <div className="space-y-2 sm:space-y-4">
+                    <Label className="text-sm">Histórico de Dispositivos</Label>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {deviceCache.length > 0 ? (
+                        deviceCache.map((device) => {
+                          const DeviceIcon = getDeviceIcon(device.type)
+                          return (
+                            <div
+                              key={device.id}
+                              className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                            >
+                              <div className="flex items-center gap-2">
+                                <DeviceIcon className="w-4 h-4 text-gray-600" />
+                                <div>
+                                  <p className="text-sm font-medium">{getDisplayName(device)}</p>
+                                  <p className="text-xs text-gray-500">
+                                    Última vez: {device.lastSeen.toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingDeviceName(device.id)
+                                    setTempDeviceName(getDisplayName(device))
+                                  }}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  ✏️
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    const updatedCache = deviceCache.filter((d) => d.id !== device.id)
+                                    setDeviceCache(updatedCache)
+                                    const updatedNames = { ...customDeviceNames }
+                                    delete updatedNames[device.id]
+                                    setCustomDeviceNames(updatedNames)
+
+                                    try {
+                                      localStorage.setItem("bluetoothDeviceCache", JSON.stringify(updatedCache))
+                                      localStorage.setItem("customDeviceNames", JSON.stringify(updatedNames))
+                                    } catch (error) {
+                                      console.error("Erro ao remover do cache:", error)
+                                    }
+                                  }}
+                                  className="h-8 w-8 p-0 text-red-600"
+                                >
+                                  🗑️
+                                </Button>
+                              </div>
+                            </div>
+                          )
+                        })
+                      ) : (
+                        <p className="text-sm text-gray-500 text-center py-4">Nenhum dispositivo no histórico</p>
+                      )}
+                    </div>
+                    {deviceCache.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setDeviceCache([])
+                          setCustomDeviceNames({})
+                          try {
+                            localStorage.removeItem("bluetoothDeviceCache")
+                            localStorage.removeItem("customDeviceNames")
+                          } catch (error) {
+                            console.error("Erro ao limpar cache:", error)
+                          }
+                          setSuccess("Histórico de dispositivos limpo!")
+                          setTimeout(() => setSuccess(null), 3000)
+                        }}
+                        className="w-full"
+                      >
+                        Limpar Histórico
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>

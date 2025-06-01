@@ -2,7 +2,35 @@ const CACHE_NAME = "bluetooth-center-v4"
 const OFFLINE_CACHE = "bluetooth-center-offline-v4"
 
 // Recursos essenciais que devem ser sempre cacheados
-const ESSENTIAL_RESOURCES = ["/", "/manifest.json", "/bluetooth-logo.png", "/connected.mp3"]
+const ESSENTIAL_RESOURCES = [
+  "/",
+  "/manifest.json",
+  "/bluetooth-logo.png",
+  "/connected.mp3",
+  "/disconnected.mp3",
+  "/favicon.ico",
+  "/favicon-16x16.png",
+  "/favicon-32x32.png",
+  "/favicon-192x192.png",
+  "/favicon-512x512.png",
+  "/apple-touch-icon.png",
+  // Cache arquivos estáticos do Next.js
+  ...self.__NEXT_STATIC_FILES__ || []
+]
+// Detectar e adicionar arquivos estáticos do Next.js ao cache ESSENTIAL_RESOURCES
+self.addEventListener("install", (event) => {
+  if (self.registration && self.registration.scope) {
+    // Buscar arquivos estáticos do Next.js
+    fetch("/_next/static/manifest.json")
+      .then((res) => res.json())
+      .then((manifest) => {
+        if (manifest && Array.isArray(manifest.files)) {
+          self.__NEXT_STATIC_FILES__ = manifest.files.map((f) => "/_next/static/" + f);
+        }
+      })
+      .catch(() => {});
+  }
+});
 
 // Recursos que podem ser cacheados opcionalmente
 const OPTIONAL_RESOURCES = ["/screenshot-1.png", "/screenshot-2.png"]

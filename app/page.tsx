@@ -491,6 +491,17 @@ export default function BluetoothCenter() {
     // Executar scan automático após 1 segundo
     setTimeout(autoScan, 1000)
 
+    // Disconnect all connected devices on page unload
+    const handleBeforeUnload = () => {
+      devices.forEach((device) => {
+        if (device.connected) {
+          disconnectDevice(device.id)
+        }
+      })
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+
     return () => {
       window.removeEventListener("online", updateOnlineStatus)
       window.removeEventListener("offline", updateOnlineStatus)
@@ -500,8 +511,9 @@ export default function BluetoothCenter() {
       window.removeEventListener("gamepadconnected", handleGamepadConnected)
       window.removeEventListener("gamepaddisconnected", handleGamepadDisconnected)
       clearInterval(gamepadInterval)
+      window.removeEventListener("beforeunload", handleBeforeUnload)
     }
-  }, [])
+  }, [devices])
 
   const getDeviceIcon = (type: BluetoothDevice["type"]) => {
     const iconMap = {

@@ -84,6 +84,9 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="152x152" href="/bluetooth-logo.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/bluetooth-logo.png" />
 
+        {/* Manifest for PWA */}
+        <link rel="manifest" href="/manifest.json" />
+
         {/* Meta tags para PWA - ESSENCIAIS para Chrome Mobile */}
         <meta name="application-name" content="Bluetooth Center" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -104,34 +107,35 @@ export default function RootLayout({
             __html: `
 // Registrar Service Worker IMEDIATAMENTE para PWA
 if ('serviceWorker' in navigator) {
-  // Registrar imediatamente, não esperar load
-  navigator.serviceWorker.register('/sw.js', {
-    scope: '/',
-    updateViaCache: 'none'
-  })
-    .then(function(registration) {
-      console.log('SW registered successfully:', registration.scope);
-      
-      // Verificar se há atualizações
-      registration.addEventListener('updatefound', () => {
-        const newWorker = registration.installing;
-        if (newWorker) {
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              console.log('Nova versão do app disponível!');
-              if (confirm('Nova versão disponível! Atualizar agora?')) {
-                window.location.reload();
-              }
-            }
-          });
-        }
-      });
-      
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js', {
+      scope: '/',
+      updateViaCache: 'none'
     })
-    .catch(function(registrationError) {
-      console.log('SW registration failed:', registrationError);
-    });
-    
+      .then(function(registration) {
+        console.log('SW registered successfully:', registration.scope);
+        
+        // Verificar se há atualizações
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('Nova versão do app disponível!');
+                if (confirm('Nova versão disponível! Atualizar agora?')) {
+                  window.location.reload();
+                }
+              }
+            });
+          }
+        });
+        
+      })
+      .catch(function(registrationError) {
+        console.log('SW registration failed:', registrationError);
+      });
+  });
+
   // Detectar quando o app volta online
   window.addEventListener('online', function() {
     console.log('App voltou online');

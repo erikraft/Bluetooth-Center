@@ -4,7 +4,7 @@ const OFFLINE_CACHE = "bluetooth-center-offline-v4"
 // Recursos essenciais que devem ser sempre cacheados
 const ESSENTIAL_RESOURCES = [
   "/",
-  "/manifest.json",
+  "/manifest.webmanifest",
   "/bluetooth-logo.png",
   "/connected.mp3",
   "/disconnected.mp3",

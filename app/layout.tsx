@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Bluetooth Center",
   description: "Centro completo de transferências Bluetooth - Funciona 100% offline",
-  manifest: "/manifest.json",
+  manifest: "/manifest.webmanifest",
   themeColor: "#1e40af",
   viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
   icons: {

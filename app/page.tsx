@@ -143,6 +143,21 @@ export default function BluetoothCenter() {
   const [isOnline, setIsOnline] = useState(true)
   const [bluetoothSupported, setBluetoothSupported] = useState(true)
   const [bluetoothEnabled, setBluetoothEnabled] = useState(true)
+
+  // Clear device cache when Bluetooth is turned off
+  useEffect(() => {
+    if (!bluetoothEnabled) {
+      setDevices([])
+      setDeviceCache([])
+      setCustomDeviceNames({})
+      try {
+        localStorage.removeItem("bluetoothDeviceCache")
+        localStorage.removeItem("customDeviceNames")
+      } catch (error) {
+        console.error("Erro ao limpar cache ao desligar Bluetooth:", error)
+      }
+    }
+  }, [bluetoothEnabled])
   const [devices, setDevices] = useState<BluetoothDevice[]>([])
   const [isScanning, setIsScanning] = useState(false)
   const [files, setFiles] = useState<FileTransfer[]>([])
@@ -834,6 +849,21 @@ export default function BluetoothCenter() {
 
   const removeDevice = (deviceId: string) => {
     setDevices((prev) => prev.filter((d) => d.id !== deviceId))
+
+    // Also remove from deviceCache and customDeviceNames
+    const updatedCache = deviceCache.filter((d) => d.id !== deviceId)
+    setDeviceCache(updatedCache)
+
+    const updatedNames = { ...customDeviceNames }
+    delete updatedNames[deviceId]
+    setCustomDeviceNames(updatedNames)
+
+    try {
+      localStorage.setItem("bluetoothDeviceCache", JSON.stringify(updatedCache))
+      localStorage.setItem("customDeviceNames", JSON.stringify(updatedNames))
+    } catch (error) {
+      console.error("Erro ao remover do cache:", error)
+    }
   }
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {

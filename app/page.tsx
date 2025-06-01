@@ -1930,7 +1930,7 @@ export default function BluetoothCenter() {
             )}
           </TabsContent>
 
-          {/* Settings Tab */}
+           {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-900">Configurações</h2>
 
@@ -1957,14 +1957,318 @@ export default function BluetoothCenter() {
                       </Button>
                     </div>
                     <p className="text-xs text-gray-500">
-                      Este nome será exibido para outros dispositivos quando eles se conectarem a você.
+                      Este nome será exibido para outros dispositivos quando eles procurarem por você
                     </p>
                   </div>
-                  <div className="space-y-1 sm:space-y-2">
-                    <Label className="text-sm">
-                      Aparência
-                    </Label>
-                    <p className="text-xs text-gray-500">
-                      Em breve!
-                    </p>\
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">Bluetooth Ativo</Label>
+                      <p className="text-xs sm:text-sm text-gray-600">Ativar/desativar Bluetooth</p>
+                    </div>
+                    <Switch checked={bluetoothEnabled} onCheckedChange={setBluetoothEnabled} />
                   </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">Aceitar Arquivos Automaticamente</Label>
+                      <p className="text-xs sm:text-sm text-gray-600">Aceitar transferências sem confirmação</p>
+                    </div>
+                    <Switch checked={autoAcceptFiles} onCheckedChange={setAutoAcceptFiles} />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">Mostrar Notificações</Label>
+                      <p className="text-xs sm:text-sm text-gray-600">Notificar sobre transferências</p>
+                    </div>
+                    <Switch checked={showNotifications} onCheckedChange={setShowNotifications} />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">Modo Offline</Label>
+                      <p className="text-xs sm:text-sm text-gray-600">
+                        {isOnline ? "Conectado à internet" : "Funcionando offline"}
+                      </p>
+                    </div>
+                    <Badge variant={isOnline ? "default" : "secondary"}>{isOnline ? "Online" : "Offline"}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2 sm:pb-4">
+                  <CardTitle className="text-base sm:text-lg">Configurações de Transferência</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 sm:space-y-6">
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label htmlFor="max-file-size" className="text-sm">
+                      Tamanho Máximo de Arquivo (MB)
+                    </Label>
+                    <Input
+                      id="max-file-size"
+                      type="number"
+                      value={maxFileSize}
+                      onChange={(e) => setMaxFileSize(Number(e.target.value))}
+                      min="1"
+                      max="1000"
+                      className="text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-2 sm:space-y-4">
+                    <Label className="text-sm">Estatísticas</Label>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                      <div className="text-center p-2 sm:p-3 bg-blue-50 rounded-lg">
+                        <div className="text-xl sm:text-2xl font-bold text-blue-600">{devices.length}</div>
+                        <div className="text-xs sm:text-sm text-gray-600">Dispositivos</div>
+                      </div>
+                      <div className="text-center p-2 sm:p-3 bg-green-50 rounded-lg">
+                        <div className="text-xl sm:text-2xl font-bold text-green-600">
+                          {history.filter((h) => h.status === "completed").length}
+                        </div>
+                        <div className="text-xs sm:text-sm text-gray-600">Transferências</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2 sm:space-y-4">
+                    <Label className="text-sm">Histórico de Dispositivos</Label>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {deviceCache.length > 0 ? (
+                        deviceCache.map((device) => {
+                          const DeviceIcon = getDeviceIcon(device.type)
+                          return (
+                            <div
+                              key={device.id}
+                              className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                            >
+                              <div className="flex items-center gap-2">
+                                <DeviceIcon className="w-4 h-4 text-gray-600" />
+                                <div>
+                                  <p className="text-sm font-medium">{getDisplayName(device)}</p>
+                                  <p className="text-xs text-gray-500">
+                                    Última vez: {device.lastSeen.toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingDeviceName(device.id)
+                                    setTempDeviceName(getDisplayName(device))
+                                  }}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    const updatedCache = deviceCache.filter((d) => d.id !== device.id)
+                                    setDeviceCache(updatedCache)
+                                    const updatedNames = { ...customDeviceNames }
+                                    delete updatedNames[device.id]
+                                    setCustomDeviceNames(updatedNames)
+
+                                    try {
+                                      localStorage.setItem("bluetoothDeviceCache", JSON.stringify(updatedCache))
+                                      localStorage.setItem("customDeviceNames", JSON.stringify(updatedNames))
+                                    } catch (error) {
+                                      console.error("Erro ao remover do cache:", error)
+                                    }
+                                  }}
+                                  className="h-8 w-8 p-0 text-red-600"
+                                >
+                                  🗑️
+                                </Button>
+                              </div>
+                            </div>
+                          )
+                        })
+                      ) : (
+                        <p className="text-sm text-gray-500 text-center py-4">Nenhum dispositivo no histórico</p>
+                      )}
+                    </div>
+                    {deviceCache.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setDeviceCache([])
+                          setCustomDeviceNames({})
+                          try {
+                            localStorage.removeItem("bluetoothDeviceCache")
+                            localStorage.removeItem("customDeviceNames")
+                          } catch (error) {
+                            console.error("Erro ao limpar cache:", error)
+                          }
+                          setSuccess("Histórico de dispositivos limpo!")
+                          setTimeout(() => setSuccess(null), 3000)
+                        }}
+                        className="w-full"
+                      >
+                        Limpar Histórico
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Info Tab */}
+          <TabsContent value="info" className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-900">Informações sobre Bluetooth</h2>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Info className="w-5 h-5" />
+                    Sobre o Bluetooth
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-gray-600">
+                    Bluetooth é uma tecnologia de comunicação sem fio de curto alcance que permite a troca de dados
+                    entre dispositivos próximos.
+                  </p>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold">Características:</h4>
+                    <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                      <li>Alcance típico de 10 metros</li>
+                      <li>Baixo consumo de energia</li>
+                      <li>Conexão automática entre dispositivos pareados</li>
+                      <li>Suporte a múltiplos dispositivos simultaneamente</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="w-5 h-5" />
+                    Funcionalidades por Dispositivo
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Headphones className="w-4 h-4 text-purple-600" />
+                      <span className="text-sm">Fones: Player de música e controles</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Watch className="w-4 h-4 text-green-600" />
+                      <span className="text-sm">Relógio: Monitoramento de saúde e fitness</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm">Celular/Laptop: Transferência de arquivos</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Speaker className="w-4 h-4 text-orange-600" />
+                      <span className="text-sm">Alto-falante: Reprodução de áudio</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="w-5 h-5" />
+                    Modo Offline
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-gray-600">
+                    Este aplicativo funciona completamente offline após a instalação, permitindo uso sem conexão com a
+                    internet.
+                  </p>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold">Recursos Offline:</h4>
+                    <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                      <li>Conexão e gerenciamento de dispositivos Bluetooth</li>
+                      <li>Transferência de arquivos entre dispositivos</li>
+                      <li>Player de música para fones de ouvido</li>
+                      <li>Monitoramento de saúde para smartwatches</li>
+                      <li>Histórico local de transferências</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Globe className="w-5 h-5" />
+                    Compatibilidade
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-gray-600">Este aplicativo funciona com a maioria dos dispositivos modernos.</p>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold">Dispositivos Suportados:</h4>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="w-4 h-4" />
+                        <span>Smartphones</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Laptop className="w-4 h-4" />
+                        <span>Laptops</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Headphones className="w-4 h-4" />
+                        <span>Fones de Ouvido</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Speaker className="w-4 h-4" />
+                        <span>Alto-falantes</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Watch className="w-4 h-4" />
+                        <span>Smartwatches</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Gamepad2 className="w-4 h-4" />
+                        <span>Controles</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Hidden file input */}
+        <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} className="hidden" />
+        {/* Snake Game Modal */}
+        {activeGame === "snake" && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="relative">
+              <Button
+                onClick={stopMiniGame}
+                className="absolute -top-2 -right-2 z-10 h-8 w-8 p-0 rounded-full"
+                variant="destructive"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+              <SnakeGame
+                gamepadIndex={connectedGamepads.find((gp) => gp.connected)?.index}
+                onScoreChange={setGameScore}
+                active={activeGame === "snake"}
+              />
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}

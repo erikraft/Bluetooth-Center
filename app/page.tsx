@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import {
   Bluetooth,
   Upload,
@@ -39,9 +38,7 @@ import {
   Monitor,
   Signal,
   Battery,
-  Shield,
   Zap,
-  Globe,
   Play,
   Pause,
   SkipForward,
@@ -54,7 +51,6 @@ import {
   Music,
   Edit3,
 } from "lucide-react"
-import { SnakeGame } from "@/components/snake-game"
 
 interface BluetoothDevice {
   id: string
@@ -708,6 +704,8 @@ export default function BluetoothCenter() {
     if (!device) return
 
     try {
+      let wasJustPaired = false
+
       // Se o dispositivo já está pareado, tentar conectar diretamente
       if (device.paired) {
         // Simular conexão para dispositivos pareados
@@ -734,6 +732,7 @@ export default function BluetoothCenter() {
           // Tentar conectar ao GATT server
           const server = await bluetoothDevice.gatt?.connect()
           if (server) {
+            wasJustPaired = true // Dispositivo foi pareado agora
             setDevices((prev) =>
               prev.map((d) => (d.id === deviceId ? { ...d, connected: true, paired: true, lastSeen: new Date() } : d)),
             )
@@ -741,26 +740,44 @@ export default function BluetoothCenter() {
         }
       }
 
-      // Reproduzir som de conexão
-      if (audioRef.current) {
+      // Reproduzir som de conexão APENAS quando o dispositivo foi pareado agora
+      if (wasJustPaired && audioRef.current) {
         try {
           audioRef.current.currentTime = 0
-          await audioRef.current.play()
-        } catch (error) {
-          console.error("Erro ao reproduzir som:", error)
+          // Tentar reproduzir com interação do usuário
+          const playPromise = audioRef.current.play()
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                console.log("Som de pareamento reproduzido com sucesso")
+              })
+              .catch((error) => {
+                console.log("Erro ao reproduzir som automaticamente:", error)
+                // Tentar reproduzir após interação do usuário
+                const playOnClick = () => {
+                  if (audioRef.current) {
+                    audioRef.current.play().catch(console.error)
+                  }
+                  document.removeEventListener('click', playOnClick)
+                }
+                document.addEventListener('click', playOnClick, { once: true })
+              })
         }
+      } catch (error) {
+        console.error("Erro ao reproduzir som:", error)
       }
+    }
 
       // Configurar funcionalidades específicas do dispositivo
       if (device.type === "headphones" && playlist.length > 0) {
         setCurrentTrack(playlist[0])
-        setSuccess("Fones conectados! Player de música disponível.")
+        setSuccess(wasJustPaired ? "Fones pareados e conectados! Player de música disponível." : "Fones conectados! Player de música disponível.")
       } else if (device.type === "watch") {
-        setSuccess("Smartwatch conectado! Monitoramento de saúde ativo.")
+        setSuccess(wasJustPaired ? "Smartwatch pareado e conectado! Monitoramento de saúde ativo." : "Smartwatch conectado! Monitoramento de saúde ativo.")
       } else if (device.type === "gamepad") {
-        setSuccess("Controle conectado! Jogos e testes disponíveis.")
+        setSuccess(wasJustPaired ? "Controle pareado e conectado! Jogos e testes disponíveis." : "Controle conectado! Jogos e testes disponíveis.")
       } else {
-        setSuccess("Dispositivo conectado com sucesso!")
+        setSuccess(wasJustPaired ? "Dispositivo pareado e conectado com sucesso!" : "Dispositivo conectado com sucesso!")
       }
 
       const updatedDevice = devices.find((d) => d.id === deviceId)
@@ -878,42 +895,61 @@ export default function BluetoothCenter() {
       temPrompt: !!deferredPrompt,
       isInstallable,
       isInstalled,
+      userAgent: navigator.userAgent
     })
 
     if (deferredPrompt) {
       try {
-        deferredPrompt.prompt()
+        // Mostrar o prompt de instalação
+        const result = await deferredPrompt.prompt()
+        console.log("Prompt result:", result)
+        
+        // Aguardar a escolha do usuário
         const { outcome } = await deferredPrompt.userChoice
         console.log("Escolha do usuário:", outcome)
 
         if (outcome === "accepted") {
           setIsInstalled(true)
           setIsInstallable(false)
+          setSuccess("App instalado com sucesso! 🎉")
+        } else {
+          setError("Instalação cancelada pelo usuário")
         }
 
         setDeferredPrompt(null)
       } catch (error) {
-        console.error("Erro ao abrir o prompt de instalação:", error)
-        setError("Não foi possível abrir o menu de instalação. Tente instalar manualmente pelo menu do navegador.")
-        setTimeout(() => setError(null), 5000)
+        console.error("Erro ao instalar PWA:", error)
+        setError("Erro durante a instalação. Tente novamente.")
       }
     } else {
+      // Instruções específicas por navegador
       const userAgent = navigator.userAgent.toLowerCase()
-
-      if (userAgent.includes("chrome") || userAgent.includes("edg")) {
+      
+      if (userAgent.includes("chrome") && userAgent.includes("mobile")) {
         setSuccess(
-          "Para instalar: Clique no ícone de instalação na barra de endereços ou nos 3 pontos (⋮) > 'Instalar Bluetooth Center'",
+          "Para instalar no Chrome Mobile: Toque nos 3 pontos (⋮) no canto superior direito > 'Instalar aplicativo' ou 'Adicionar à tela inicial'"
+        )
+      } else if (userAgent.includes("chrome")) {
+        setSuccess(
+          "Para instalar no Chrome: Clique no ícone de instalação na barra de endereços ou nos 3 pontos (⋮) > 'Instalar Bluetooth Center'"
         )
       } else if (userAgent.includes("firefox")) {
-        setSuccess("Para instalar: Clique no ícone + na barra de endereços")
+        setSuccess("Para instalar no Firefox: Clique no ícone + na barra de endereços")
       } else if (userAgent.includes("safari")) {
-        setSuccess("Para instalar: Clique em Compartilhar > 'Adicionar à Tela de Início'")
+        setSuccess("Para instalar no Safari: Toque em Compartilhar > 'Adicionar à Tela de Início'")
+      } else if (userAgent.includes("edge")) {
+        setSuccess("Para instalar no Edge: Clique nos 3 pontos (...) > 'Aplicativos' > 'Instalar este site como aplicativo'")
       } else {
-        setSuccess("Para instalar: Use o menu do seu navegador para encontrar a opção 'Instalar aplicativo'")
+        setSuccess("Para instalar: Use o menu do seu navegador para encontrar a opção 'Instalar aplicativo' ou 'Adicionar à tela inicial'")
       }
 
-      setTimeout(() => setSuccess(null), 5000)
+      setTimeout(() => setSuccess(null), 8000)
     }
+
+    setTimeout(() => {
+      setError(null)
+      setSuccess(null)
+    }, 8000)
   }
 
   // Music Player Functions
@@ -1921,318 +1957,14 @@ export default function BluetoothCenter() {
                       </Button>
                     </div>
                     <p className="text-xs text-gray-500">
-                      Este nome será exibido para outros dispositivos quando eles procurarem por você
+                      Este nome será exibido para outros dispositivos quando eles se conectarem a você.
                     </p>
                   </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="text-sm">Bluetooth Ativo</Label>
-                      <p className="text-xs sm:text-sm text-gray-600">Ativar/desativar Bluetooth</p>
-                    </div>
-                    <Switch checked={bluetoothEnabled} onCheckedChange={setBluetoothEnabled} />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="text-sm">Aceitar Arquivos Automaticamente</Label>
-                      <p className="text-xs sm:text-sm text-gray-600">Aceitar transferências sem confirmação</p>
-                    </div>
-                    <Switch checked={autoAcceptFiles} onCheckedChange={setAutoAcceptFiles} />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="text-sm">Mostrar Notificações</Label>
-                      <p className="text-xs sm:text-sm text-gray-600">Notificar sobre transferências</p>
-                    </div>
-                    <Switch checked={showNotifications} onCheckedChange={setShowNotifications} />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="text-sm">Modo Offline</Label>
-                      <p className="text-xs sm:text-sm text-gray-600">
-                        {isOnline ? "Conectado à internet" : "Funcionando offline"}
-                      </p>
-                    </div>
-                    <Badge variant={isOnline ? "default" : "secondary"}>{isOnline ? "Online" : "Offline"}</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2 sm:pb-4">
-                  <CardTitle className="text-base sm:text-lg">Configurações de Transferência</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 sm:space-y-6">
                   <div className="space-y-1 sm:space-y-2">
-                    <Label htmlFor="max-file-size" className="text-sm">
-                      Tamanho Máximo de Arquivo (MB)
+                    <Label className="text-sm">
+                      Aparência
                     </Label>
-                    <Input
-                      id="max-file-size"
-                      type="number"
-                      value={maxFileSize}
-                      onChange={(e) => setMaxFileSize(Number(e.target.value))}
-                      min="1"
-                      max="1000"
-                      className="text-sm"
-                    />
+                    <p className="text-xs text-gray-500">
+                      Em breve!
+                    </p>\
                   </div>
-
-                  <div className="space-y-2 sm:space-y-4">
-                    <Label className="text-sm">Estatísticas</Label>
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                      <div className="text-center p-2 sm:p-3 bg-blue-50 rounded-lg">
-                        <div className="text-xl sm:text-2xl font-bold text-blue-600">{devices.length}</div>
-                        <div className="text-xs sm:text-sm text-gray-600">Dispositivos</div>
-                      </div>
-                      <div className="text-center p-2 sm:p-3 bg-green-50 rounded-lg">
-                        <div className="text-xl sm:text-2xl font-bold text-green-600">
-                          {history.filter((h) => h.status === "completed").length}
-                        </div>
-                        <div className="text-xs sm:text-sm text-gray-600">Transferências</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-2 sm:space-y-4">
-                    <Label className="text-sm">Histórico de Dispositivos</Label>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {deviceCache.length > 0 ? (
-                        deviceCache.map((device) => {
-                          const DeviceIcon = getDeviceIcon(device.type)
-                          return (
-                            <div
-                              key={device.id}
-                              className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
-                            >
-                              <div className="flex items-center gap-2">
-                                <DeviceIcon className="w-4 h-4 text-gray-600" />
-                                <div>
-                                  <p className="text-sm font-medium">{getDisplayName(device)}</p>
-                                  <p className="text-xs text-gray-500">
-                                    Última vez: {device.lastSeen.toLocaleString()}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    setEditingDeviceName(device.id)
-                                    setTempDeviceName(getDisplayName(device))
-                                  }}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Edit3 className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    const updatedCache = deviceCache.filter((d) => d.id !== device.id)
-                                    setDeviceCache(updatedCache)
-                                    const updatedNames = { ...customDeviceNames }
-                                    delete updatedNames[device.id]
-                                    setCustomDeviceNames(updatedNames)
-
-                                    try {
-                                      localStorage.setItem("bluetoothDeviceCache", JSON.stringify(updatedCache))
-                                      localStorage.setItem("customDeviceNames", JSON.stringify(updatedNames))
-                                    } catch (error) {
-                                      console.error("Erro ao remover do cache:", error)
-                                    }
-                                  }}
-                                  className="h-8 w-8 p-0 text-red-600"
-                                >
-                                  🗑️
-                                </Button>
-                              </div>
-                            </div>
-                          )
-                        })
-                      ) : (
-                        <p className="text-sm text-gray-500 text-center py-4">Nenhum dispositivo no histórico</p>
-                      )}
-                    </div>
-                    {deviceCache.length > 0 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setDeviceCache([])
-                          setCustomDeviceNames({})
-                          try {
-                            localStorage.removeItem("bluetoothDeviceCache")
-                            localStorage.removeItem("customDeviceNames")
-                          } catch (error) {
-                            console.error("Erro ao limpar cache:", error)
-                          }
-                          setSuccess("Histórico de dispositivos limpo!")
-                          setTimeout(() => setSuccess(null), 3000)
-                        }}
-                        className="w-full"
-                      >
-                        Limpar Histórico
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Info Tab */}
-          <TabsContent value="info" className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Informações sobre Bluetooth</h2>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Info className="w-5 h-5" />
-                    Sobre o Bluetooth
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-gray-600">
-                    Bluetooth é uma tecnologia de comunicação sem fio de curto alcance que permite a troca de dados
-                    entre dispositivos próximos.
-                  </p>
-                  <div className="space-y-2">
-                    <h4 className="font-semibold">Características:</h4>
-                    <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                      <li>Alcance típico de 10 metros</li>
-                      <li>Baixo consumo de energia</li>
-                      <li>Conexão automática entre dispositivos pareados</li>
-                      <li>Suporte a múltiplos dispositivos simultaneamente</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="w-5 h-5" />
-                    Funcionalidades por Dispositivo
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Headphones className="w-4 h-4 text-purple-600" />
-                      <span className="text-sm">Fones: Player de música e controles</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Watch className="w-4 h-4 text-green-600" />
-                      <span className="text-sm">Relógio: Monitoramento de saúde e fitness</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Smartphone className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm">Celular/Laptop: Transferência de arquivos</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Speaker className="w-4 h-4 text-orange-600" />
-                      <span className="text-sm">Alto-falante: Reprodução de áudio</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Zap className="w-5 h-5" />
-                    Modo Offline
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-gray-600">
-                    Este aplicativo funciona completamente offline após a instalação, permitindo uso sem conexão com a
-                    internet.
-                  </p>
-                  <div className="space-y-2">
-                    <h4 className="font-semibold">Recursos Offline:</h4>
-                    <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                      <li>Conexão e gerenciamento de dispositivos Bluetooth</li>
-                      <li>Transferência de arquivos entre dispositivos</li>
-                      <li>Player de música para fones de ouvido</li>
-                      <li>Monitoramento de saúde para smartwatches</li>
-                      <li>Histórico local de transferências</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Globe className="w-5 h-5" />
-                    Compatibilidade
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-gray-600">Este aplicativo funciona com a maioria dos dispositivos modernos.</p>
-                  <div className="space-y-2">
-                    <h4 className="font-semibold">Dispositivos Suportados:</h4>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Smartphone className="w-4 h-4" />
-                        <span>Smartphones</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Laptop className="w-4 h-4" />
-                        <span>Laptops</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Headphones className="w-4 h-4" />
-                        <span>Fones de Ouvido</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Speaker className="w-4 h-4" />
-                        <span>Alto-falantes</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Watch className="w-4 h-4" />
-                        <span>Smartwatches</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Gamepad2 className="w-4 h-4" />
-                        <span>Controles</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        {/* Hidden file input */}
-        <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} className="hidden" />
-        {/* Snake Game Modal */}
-        {activeGame === "snake" && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="relative">
-              <Button
-                onClick={stopMiniGame}
-                className="absolute -top-2 -right-2 z-10 h-8 w-8 p-0 rounded-full"
-                variant="destructive"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-              <SnakeGame
-                gamepadIndex={connectedGamepads.find((gp) => gp.connected)?.index}
-                onScoreChange={setGameScore}
-                active={activeGame === "snake"}
-              />
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  )
-}

@@ -1,5 +1,5 @@
-const CACHE_NAME = "bluetooth-center-v3"
-const OFFLINE_CACHE = "bluetooth-center-offline-v3"
+const CACHE_NAME = "bluetooth-center-v4"
+const OFFLINE_CACHE = "bluetooth-center-offline-v4"
 
 // Recursos essenciais que devem ser sempre cacheados
 const ESSENTIAL_RESOURCES = ["/", "/manifest.json", "/bluetooth-logo.png", "/connected.mp3"]
@@ -15,12 +15,13 @@ const OFFLINE_FALLBACK_PAGE = `
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bluetooth Center - Offline</title>
+  <meta name="theme-color" content="#1e40af">
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       margin: 0;
       padding: 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -34,6 +35,7 @@ const OFFLINE_FALLBACK_PAGE = `
       border-radius: 20px;
       backdrop-filter: blur(10px);
       max-width: 400px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
     }
     .icon {
       font-size: 4rem;
@@ -48,7 +50,7 @@ const OFFLINE_FALLBACK_PAGE = `
       opacity: 0.9;
     }
     .retry-btn {
-      background: #4CAF50;
+      background: #10b981;
       color: white;
       border: none;
       padding: 12px 24px;
@@ -59,7 +61,7 @@ const OFFLINE_FALLBACK_PAGE = `
       transition: background 0.3s;
     }
     .retry-btn:hover {
-      background: #45a049;
+      background: #059669;
     }
     .features {
       margin-top: 30px;
@@ -78,11 +80,18 @@ const OFFLINE_FALLBACK_PAGE = `
       border-radius: 8px;
       font-size: 14px;
     }
+    .install-hint {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(16, 185, 129, 0.2);
+      border-radius: 8px;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="icon">📶</div>
+    <div class="icon">📱</div>
     <h1>Bluetooth Center</h1>
     <p>Você está offline, mas o app ainda funciona!</p>
     
@@ -105,6 +114,10 @@ const OFFLINE_FALLBACK_PAGE = `
       </div>
     </div>
     
+    <div class="install-hint">
+      💡 <strong>Dica:</strong> Instale este app na sua tela inicial para acesso rápido!
+    </div>
+    
     <button class="retry-btn" onclick="window.location.reload()">
       🔄 Tentar Novamente
     </button>
@@ -120,11 +133,11 @@ const OFFLINE_FALLBACK_PAGE = `
       const status = document.getElementById('status');
       if (navigator.onLine) {
         status.innerHTML = '🌐 Conectado - Redirecionando...';
-        status.style.background = 'rgba(76, 175, 80, 0.3)';
+        status.style.background = 'rgba(16, 185, 129, 0.3)';
         setTimeout(() => window.location.reload(), 1000);
       } else {
         status.innerHTML = '📱 Modo Offline - App Funcional';
-        status.style.background = 'rgba(255, 193, 7, 0.3)';
+        status.style.background = 'rgba(245, 158, 11, 0.3)';
       }
     }
 

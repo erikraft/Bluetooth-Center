@@ -52,6 +52,7 @@ import {
   Music,
   Edit3,
 } from "lucide-react"
+import { SnakeGame } from "@/components/snake-game"
 
 interface BluetoothDevice {
   id: string

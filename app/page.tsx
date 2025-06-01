@@ -498,6 +498,13 @@ export default function BluetoothCenter() {
           disconnectDevice(device.id)
         }
       })
+      // Update localStorage cache to mark all devices as disconnected to avoid stale state
+      try {
+        const updatedCache = devices.map((device) => ({ ...device, connected: false }))
+        localStorage.setItem("bluetoothDeviceCache", JSON.stringify(updatedCache))
+      } catch (error) {
+        console.error("Erro ao atualizar cache no unload:", error)
+      }
     }
 
     window.addEventListener("beforeunload", handleBeforeUnload)

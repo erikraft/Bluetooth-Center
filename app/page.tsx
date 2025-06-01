@@ -496,13 +496,17 @@ export default function BluetoothCenter() {
       // Disconnect devices
       devices.forEach((device) => {
         if (device.connected) {
-          disconnectDevice(device.id)
+          try {
+            disconnectDevice(device.id)
+          } catch (error) {
+            console.error("Erro ao desconectar dispositivo no unload:", error)
+          }
         }
       })
 
-      // Clear devices and deviceCache state immediately
-      setDevices([])
-      setDeviceCache([])
+      // Do NOT update React state here to avoid client-side exceptions on unload
+      // setDevices([])
+      // setDeviceCache([])
 
       // Clear localStorage cache to avoid stale state
       try {
@@ -514,6 +518,15 @@ export default function BluetoothCenter() {
     }
 
     window.addEventListener("beforeunload", handleBeforeUnload)
+
+    // Add pagehide event for better unload handling
+    const handlePageHide = () => {
+      // Clear React state safely on page hide
+      setDevices([])
+      setDeviceCache([])
+    }
+
+    window.addEventListener("pagehide", handlePageHide)
 
     return () => {
       window.removeEventListener("online", updateOnlineStatus)
@@ -842,6 +855,10 @@ export default function BluetoothCenter() {
 
   const disconnectDevice = (deviceId: string) => {
     const device = devices.find((d) => d.id === deviceId)
+
+    // Do NOT play audio during unload to avoid async errors
+    const isUnloading = document.hidden || document.visibilityState === "hidden"
+
     setDevices((prev) => prev.map((d) => (d.id === deviceId ? { ...d, connected: false } : d)))
 
     // Parar música se desconectar fones
@@ -850,8 +867,7 @@ export default function BluetoothCenter() {
       setCurrentTrack(null)
     }
 
-    // Reproduzir som de desconexão
-    if (audioRefDisconnected.current) {
+    if (!isUnloading && audioRefDisconnected.current) {
       try {
         audioRefDisconnected.current.currentTime = 0
         const playPromise = audioRefDisconnected.current.play()

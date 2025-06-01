@@ -152,6 +152,7 @@ export default function BluetoothCenter() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioRefDisconnected = useRef<HTMLAudioElement | null>(null)
   const [activeTab, setActiveTab] = useState("devices")
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isInstallable, setIsInstallable] = useState(false)
@@ -364,6 +365,7 @@ export default function BluetoothCenter() {
 
     // Criar elemento de áudio
     audioRef.current = new Audio("/connected.mp3")
+    audioRefDisconnected.current = new Audio("/disconnected.mp3")
 
     // Carregar dados salvos
     loadFromLocalStorage()
@@ -805,6 +807,27 @@ export default function BluetoothCenter() {
     if (device?.type === "headphones") {
       setIsPlaying(false)
       setCurrentTrack(null)
+    }
+
+    // Reproduzir som de desconexão
+    if (audioRefDisconnected.current) {
+      try {
+        audioRefDisconnected.current.currentTime = 0
+        const playPromise = audioRefDisconnected.current.play()
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            const playOnClick = () => {
+              if (audioRefDisconnected.current) {
+                audioRefDisconnected.current.play().catch(console.error)
+              }
+              document.removeEventListener('click', playOnClick)
+            }
+            document.addEventListener('click', playOnClick, { once: true })
+          })
+        }
+      } catch (error) {
+        console.error("Erro ao reproduzir som de desconexão:", error)
+      }
     }
   }
 

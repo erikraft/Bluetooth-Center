@@ -492,41 +492,41 @@ export default function BluetoothCenter() {
     setTimeout(autoScan, 1000)
 
     // Disconnect all connected devices on page unload
--    const handleBeforeUnload = () => {
--      // Disconnect devices
--      devices.forEach((device) => {
--        if (device.connected) {
--          try {
--            disconnectDevice(device.id)
--          } catch (error) {
--            console.error("Erro ao desconectar dispositivo no unload:", error)
--          }
--        }
--      })
--
--      // Do NOT update React state here to avoid client-side exceptions on unload
--      // setDevices([])
--      // setDeviceCache([])
--
--      // Clear localStorage cache to avoid stale state
--      try {
--        localStorage.removeItem("bluetoothDeviceCache")
--        localStorage.removeItem("customDeviceNames")
--      } catch (error) {
--        console.error("Erro ao limpar cache no unload:", error)
--      }
--    }
--
--    window.addEventListener("beforeunload", handleBeforeUnload)
--
--    // Add pagehide event for better unload handling
--    const handlePageHide = () => {
--      // Clear React state safely on page hide
--      setDevices([])
--      setDeviceCache([])
--    }
--
--    window.addEventListener("pagehide", handlePageHide)
+    const handleBeforeUnload = () => {
+      // Disconnect devices
+      devices.forEach((device) => {
+        if (device.connected) {
+          try {
+            disconnectDevice(device.id)
+          } catch (error) {
+            console.error("Erro ao desconectar dispositivo no unload:", error)
+          }
+        }
+      })
+
+      // Do NOT update React state here to avoid client-side exceptions on unload
+      // setDevices([])
+      // setDeviceCache([])
+
+      // Clear localStorage cache to avoid stale state
+      try {
+        localStorage.removeItem("bluetoothDeviceCache")
+        localStorage.removeItem("customDeviceNames")
+      } catch (error) {
+        console.error("Erro ao limpar cache no unload:", error)
+      }
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+
+    // Add pagehide event for better unload handling
+    const handlePageHide = () => {
+      // Clear React state safely on page hide
+      setDevices([])
+      setDeviceCache([])
+    }
+
+    window.addEventListener("pagehide", handlePageHide)
 
     return () => {
       window.removeEventListener("online", updateOnlineStatus)

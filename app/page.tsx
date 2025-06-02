@@ -765,6 +765,34 @@ export default function BluetoothCenter() {
 
     try {
       let wasJustPaired = false
+      let batteryLevel: number | undefined = undefined
+      let heartRate: number | undefined = undefined
+      // Adicione outros dados de saúde aqui se necessário
+
+      // Função para ler nível de bateria
+      const readBatteryLevel = async (gatt: BluetoothRemoteGATTServer) => {
+        try {
+          const service = await gatt.getPrimaryService("battery_service")
+          const characteristic = await service.getCharacteristic("battery_level")
+          const value = await characteristic.readValue()
+          return value.getUint8(0)
+        } catch {
+          return undefined
+        }
+      }
+
+      // Função para ler batimentos cardíacos
+      const readHeartRate = async (gatt: BluetoothRemoteGATTServer) => {
+        try {
+          const service = await gatt.getPrimaryService("heart_rate")
+          const characteristic = await service.getCharacteristic("heart_rate_measurement")
+          const value = await characteristic.readValue()
+          // O valor do heart rate está no segundo byte
+          return value.getUint8(1)
+        } catch {
+          return undefined
+        }
+      }
 
       // Se o dispositivo já está pareado, tentar conectar diretamente
       if (device.paired) {
@@ -788,13 +816,32 @@ export default function BluetoothCenter() {
           ],
         })
 
-        if (bluetoothDevice) {
-          // Tentar conectar ao GATT server
-          const server = await bluetoothDevice.gatt?.connect()
+        if (bluetoothDevice && bluetoothDevice.gatt) {
+          const server = await bluetoothDevice.gatt.connect()
           if (server) {
             wasJustPaired = true // Dispositivo foi pareado agora
+
+            // Buscar nível de bateria
+            batteryLevel = await readBatteryLevel(server)
+
+            // Buscar batimentos cardíacos se for relógio
+            if (device.type === "watch") {
+              heartRate = await readHeartRate(server)
+            }
+
             setDevices((prev) =>
-              prev.map((d) => (d.id === deviceId ? { ...d, connected: true, paired: true, lastSeen: new Date() } : d)),
+              prev.map((d) =>
+                d.id === deviceId
+                  ? {
+                      ...d,
+                      connected: true,
+                      paired: true,
+                      lastSeen: new Date(),
+                      batteryLevel,
+                      ...(device.type === "watch" && heartRate !== undefined ? { heartRate } : {}),
+                    }
+                  : d
+              )
             )
           }
         }
@@ -822,11 +869,11 @@ export default function BluetoothCenter() {
                 }
                 document.addEventListener('click', playOnClick, { once: true })
               })
+          }
+        } catch (error) {
+          console.error("Erro ao reproduzir som:", error)
         }
-      } catch (error) {
-        console.error("Erro ao reproduzir som:", error)
       }
-    }
 
       // Configurar funcionalidades específicas do dispositivo
       if (device.type === "headphones" && playlist.length > 0) {
@@ -842,7 +889,7 @@ export default function BluetoothCenter() {
 
       const updatedDevice = devices.find((d) => d.id === deviceId)
       if (updatedDevice) {
-        saveDeviceToCache({ ...updatedDevice, connected: true, paired: true })
+        saveDeviceToCache({ ...updatedDevice, connected: true, paired: true, batteryLevel, heartRate })
       }
 
       setTimeout(() => setSuccess(null), 3000)
@@ -1228,19 +1275,19 @@ export default function BluetoothCenter() {
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div className="flex items-center gap-2">
                 <Heart className="w-4 h-4 text-red-500" />
-                <span>{watchData.heartRate} bpm</span>
+                <span>{typeof device.heartRate === 'number' ? `${device.heartRate} bpm` : 'Não disponível'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4 text-blue-500" />
-                <span>{watchData.steps} passos</span>
+                <span>{typeof device.steps === 'number' ? `${device.steps} passos` : 'Não disponível'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-orange-500" />
-                <span>{watchData.calories} cal</span>
+                <span>{typeof device.calories === 'number' ? `${device.calories} cal` : 'Não disponível'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-purple-500" />
-                <span>{watchData.notifications} notif.</span>
+                <span>{typeof device.notifications === 'number' ? `${device.notifications} notif.` : 'Não disponível'}</span>
               </div>
             </div>
             <div className="mt-2 flex gap-1">

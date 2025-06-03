@@ -1016,25 +1016,28 @@ export default function BluetoothCenter() {
     }, 200)
   }
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes"
-    const k = 1024
-    const sizes = ["Bytes", "KB", "MB", "GB"]
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
-  }
+const formatFileSize = (bytes: number) => {
+  if (typeof window === "undefined") return ""
+  if (bytes === 0) return "0 Bytes"
+  const k = 1024
+  const sizes = ["Bytes", "KB", "MB", "GB"]
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+}
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, "0")}`
-  }
+const formatDuration = (seconds: number) => {
+  if (typeof window === "undefined") return ""
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins}:${secs.toString().padStart(2, "0")}`
+}
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins}:${secs.toString().padStart(2, "0")}`
-  }
+const formatTime = (seconds: number) => {
+  if (typeof window === "undefined") return ""
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins}:${secs.toString().padStart(2, "0")}`
+}
 
   const installPWA = async () => {
     console.log("Botão de instalação clicado", {
@@ -1445,6 +1448,27 @@ export default function BluetoothCenter() {
           </div>
         )
 
+      case "tv":
+        return (
+          <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+            <h4 className="font-semibold text-yellow-800 mb-2 flex items-center gap-2">
+              <Tv className="w-4 h-4" />
+              Transmissão de Tela
+            </h4>
+            <p className="text-sm text-gray-600 mb-2">Transmita a tela do seu dispositivo para a TV conectada via Bluetooth.</p>
+            <Button
+              onClick={() => {
+                setSuccess("Transmissão de tela iniciada para a TV!")
+                setTimeout(() => setSuccess(null), 3000)
+              }}
+              size="sm"
+              className="w-full"
+            >
+              <Tv className="w-3 h-3 mr-1" />
+              Iniciar Transmissão de Tela
+            </Button>
+          </div>
+        )
       default:
         return (
           <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
@@ -2270,7 +2294,9 @@ export default function BluetoothCenter() {
                                   }}
                                   className="h-8 w-8 p-0 text-red-600"
                                 >
-                                  🗑️
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 7h12M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m2 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12z" />
+                                  </svg>
                                 </Button>
                               </div>
                             </div>

@@ -189,6 +189,7 @@ export default function BluetoothCenter() {
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioRefDisconnected = useRef<HTMLAudioElement | null>(null)
+  const audioRefWaiting = useRef<HTMLAudioElement | null>(null)
   const [activeTab, setActiveTab] = useState("devices")
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isInstallable, setIsInstallable] = useState(false)
@@ -418,6 +419,7 @@ export default function BluetoothCenter() {
     // Criar elemento de áudio
     audioRef.current = new Audio("/connected.mp3")
     audioRefDisconnected.current = new Audio("/disconnected.mp3")
+    audioRefWaiting.current = new Audio("/waiting.mp3")
 
     // Carregar dados salvos
     loadFromLocalStorage()
@@ -588,6 +590,37 @@ export default function BluetoothCenter() {
       if (gamepadInterval) clearInterval(gamepadInterval)
     }
   }, [devices])
+
+  // Play waiting.mp3 when there is at least one available but not paired device
+  useEffect(() => {
+    if (!audioRefWaiting.current) return
+
+    const hasAvailableNotPaired = devices.some((d) => !d.connected && !d.paired)
+
+    if (hasAvailableNotPaired) {
+      try {
+        audioRefWaiting.current.currentTime = 0
+        const playPromise = audioRefWaiting.current.play()
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            const playOnClick = () => {
+              if (audioRefWaiting.current) {
+                audioRefWaiting.current.play().catch(console.error)
+              }
+              document.removeEventListener('click', playOnClick)
+            }
+            document.addEventListener('click', playOnClick, { once: true })
+          })
+        }
+      } catch (error) {
+        console.error("Erro ao reproduzir som waiting.mp3:", error)
+      }
+    } else {
+      audioRefWaiting.current.pause()
+      audioRefWaiting.current.currentTime = 0
+    }
+  }, [devices])
+
 
   const getDeviceIcon = (type: BluetoothDevice["type"]) => {
     const iconMap = {

@@ -5,29 +5,52 @@ import React, { useEffect, useState } from "react"
 export default function PwaInstallButton() {
   const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null)
   const [isVisible, setIsVisible] = useState(false)
+  const [isInstalled, setIsInstalled] = useState(false)
+  const [isStandalone, setIsStandalone] = useState(false)
 
   useEffect(() => {
+    // Check if app is running in standalone mode
+    const standalone = window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true
+    setIsStandalone(standalone)
+
+    // Check if app was installed previously (flag in localStorage)
+    const installedFlag = localStorage.getItem("pwa-installed")
+    if (installedFlag === "true") {
+      setIsInstalled(true)
+    }
+
     function beforeInstallPromptHandler(e: Event) {
       e.preventDefault()
       setDeferredPrompt(e)
       setIsVisible(true)
     }
 
-    window.addEventListener("beforeinstallprompt", beforeInstallPromptHandler)
-
-    window.addEventListener("appinstalled", () => {
+    function appInstalledHandler() {
       console.log("PWA was installed")
       setIsVisible(false)
       setDeferredPrompt(null)
-    })
+      setIsInstalled(true)
+      localStorage.setItem("pwa-installed", "true")
+    }
+
+    window.addEventListener("beforeinstallprompt", beforeInstallPromptHandler)
+    window.addEventListener("appinstalled", appInstalledHandler)
 
     return () => {
       window.removeEventListener("beforeinstallprompt", beforeInstallPromptHandler)
-      window.removeEventListener("appinstalled", () => {})
+      window.removeEventListener("appinstalled", appInstalledHandler)
     }
   }, [])
 
   const handleInstallClick = async () => {
+    if (isInstalled && !isStandalone) {
+      // Open the PWA if installed but user is in browser
+      // Redirect to the PWA URL or show a message
+      // Here we redirect to the root URL which should open the PWA if installed
+      window.location.href = "/"
+      return
+    }
+
     if (!deferredPrompt) {
       return
     }
@@ -44,7 +67,11 @@ export default function PwaInstallButton() {
     setIsVisible(false)
   }
 
-  if (!isVisible) {
+  // Show button if:
+  // 1. beforeinstallprompt event fired (isVisible)
+  // OR
+  // 2. PWA is installed but user is not in standalone mode (show "Abrir App")
+  if (!isVisible && !(isInstalled && !isStandalone)) {
     return null
   }
 
@@ -63,9 +90,9 @@ export default function PwaInstallButton() {
         cursor: "pointer",
         zIndex: 1000,
       }}
-      aria-label="Install Bluetooth Center"
+      aria-label={isInstalled && !isStandalone ? "Abrir App" : "Instalar Bluetooth Center"}
     >
-      Instalar App
+      {isInstalled && !isStandalone ? "Abrir App" : "Instalar App"}
     </button>
   )
 }

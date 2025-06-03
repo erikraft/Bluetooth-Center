@@ -146,6 +146,17 @@ export default function BluetoothCenter() {
 
   // Clear device cache when Bluetooth is turned off
   useEffect(() => {
+    // Listener para mudanças de display-mode (PWA instalado)
+    const updateInstallStatus = () => {
+      const isStandalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        window.matchMedia("(display-mode: minimal-ui)").matches ||
+        window.matchMedia("(display-mode: fullscreen)").matches ||
+        (window.navigator as any).standalone === true ||
+        document.referrer.includes("android-app://")
+      setIsInstalled(isStandalone)
+    }
+
     if (!bluetoothEnabled) {
       setDevices([])
       setDeviceCache([])
@@ -350,20 +361,26 @@ export default function BluetoothCenter() {
       setTimeout(() => setSuccess(null), 4000)
     }
 
+
     // Verificar se já está instalado - melhorado para Chrome Mobile
     if (typeof window !== "undefined") {
-      const isStandalone =
-        window.matchMedia("(display-mode: standalone)").matches ||
-        window.matchMedia("(display-mode: minimal-ui)").matches ||
-        window.matchMedia("(display-mode: fullscreen)").matches ||
-        (window.navigator as any).standalone === true ||
-        document.referrer.includes("android-app://")
+      updateInstallStatus()
 
-      setIsInstalled(isStandalone)
-
-      if (!isStandalone) {
+      if (!window.matchMedia("(display-mode: standalone)").matches &&
+          !window.matchMedia("(display-mode: minimal-ui)").matches &&
+          !window.matchMedia("(display-mode: fullscreen)").matches &&
+          !(window.navigator as any).standalone === true &&
+          !document.referrer.includes("android-app://")) {
         setIsInstallable(true)
       }
+
+      // Listener para mudanças de display-mode
+      const mqlStandalone = window.matchMedia("(display-mode: standalone)")
+      const mqlMinimal = window.matchMedia("(display-mode: minimal-ui)")
+      const mqlFullscreen = window.matchMedia("(display-mode: fullscreen)")
+      mqlStandalone.addEventListener("change", updateInstallStatus)
+      mqlMinimal.addEventListener("change", updateInstallStatus)
+      mqlFullscreen.addEventListener("change", updateInstallStatus)
 
       // Verificar se é primeira visita offline
       const isFirstVisit = !localStorage.getItem("bluetoothCenterVisited")
@@ -373,6 +390,13 @@ export default function BluetoothCenter() {
           setSuccess("Bem-vindo! Este app funciona completamente offline 🚀")
           setTimeout(() => setSuccess(null), 5000)
         }
+      }
+
+      // Remover listeners ao desmontar
+      return () => {
+        mqlStandalone.removeEventListener("change", updateInstallStatus)
+        mqlMinimal.removeEventListener("change", updateInstallStatus)
+        mqlFullscreen.removeEventListener("change", updateInstallStatus)
       }
     }
 
@@ -1526,8 +1550,8 @@ const formatTime = (seconds: number) => {
                 </Badge>
               </div>
 
-              {/* PWA Install */}
-              {!isInstalled && (
+              {/* PWA Install / Abrir App */}
+              {!isInstalled ? (
                 <Button
                   onClick={installPWA}
                   size="sm"
@@ -1535,6 +1559,22 @@ const formatTime = (seconds: number) => {
                 >
                   <Download className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="ml-1 sm:ml-2 text-xs sm:text-sm">Instalar</span>
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => {
+                    // Preferencialmente abre em standalone, mas fallback para nova aba
+                    if (window.matchMedia("(display-mode: browser)").matches) {
+                      window.open("/", "_blank")
+                    } else {
+                      window.location.href = "/"
+                    }
+                  }}
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white transition-colors flex-shrink-0 px-2 sm:px-4"
+                >
+                  <Download className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="ml-1 sm:ml-2 text-xs sm:text-sm">Abrir App</span>
                 </Button>
               )}
             </div>
@@ -2295,8 +2335,7 @@ const formatTime = (seconds: number) => {
                                   className="h-8 w-8 p-0 text-red-600"
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 7h12M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m2 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12z" />
-                                  </svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M280-120q-33 0-56.5-23.5T200-200v-520q-17 0-28.5-11.5T160-760q0-17 11.5-28.5T200-800h160q0-17 11.5-28.5T400-840h160q17 0 28.5 11.5T600-800h160q17 0 28.5 11.5T800-760q0 17-11.5 28.5T760-720v520q0 33-23.5 56.5T680-120H280Zm120-160q17 0 28.5-11.5T440-320v-280q0-17-11.5-28.5T400-640q-17 0-28.5 11.5T360-600v280q0 17 11.5 28.5T400-280Zm160 0q17 0 28.5-11.5T600-320v-280q0-17-11.5-28.5T560-640q-17 0-28.5 11.5T520-600v280q0 17 11.5 28.5T560-280Z"/></svg>
                                 </Button>
                               </div>
                             </div>

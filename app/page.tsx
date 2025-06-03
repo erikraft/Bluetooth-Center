@@ -38,7 +38,8 @@ import {
   Keyboard,
   Monitor,
   Signal,
-  Battery,
+Battery,
+Tv,
   Zap,
   Play,
   Pause,
@@ -72,6 +73,7 @@ interface BluetoothDevice {
     | "mouse"
     | "keyboard"
     | "monitor"
+    | "tv"
     | "unknown"
   batteryLevel?: number
   signalStrength: number
@@ -578,13 +580,14 @@ export default function BluetoothCenter() {
       mouse: Mouse,
       keyboard: Keyboard,
       monitor: Monitor,
+      tv: Tv,
       unknown: Bluetooth,
     }
     return iconMap[type] || Bluetooth
   }
 
   const getDeviceCapabilities = (type: BluetoothDevice["type"]): string[] => {
-    const capabilityMap = {
+    const capabilityMap: Record<BluetoothDevice["type"], string[]> = {
       phone: ["file_transfer", "messaging", "calls"],
       laptop: ["file_transfer", "screen_sharing"],
       headphones: ["audio_playback", "music_control"],
@@ -596,6 +599,7 @@ export default function BluetoothCenter() {
       mouse: ["input_control"],
       keyboard: ["input_control"],
       monitor: ["display_output"],
+      tv: ["screen_casting"],
       unknown: ["basic_connection"],
     }
     return capabilityMap[type] || ["basic_connection"]
@@ -1501,33 +1505,6 @@ const formatTime = (seconds: number) => {
         )
     }
   }
-
-return (
-  <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-    {/* Header */}
-    <header className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-3 py-3 sm:px-4 sm:py-4">
-        {/* ... */}
-      </div>
-    </header>
-    {/* Main Content */}
-    <main className="max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-6">
-      {/* Alerts */}
-      {error && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          {/* ... */}
-        </Alert>
-      )}
-      {success && (
-        <Alert className="mb-6 border-green-200 bg-green-50">
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          {/* ... */}
-        </Alert>
-      )}
-  
-  const saveDeviceName = () => {
-    try {
       localStorage.setItem("deviceName", deviceName)
       setSuccess("Nome do dispositivo salvo com sucesso!")
       setTimeout(() => setSuccess(null), 3000)
@@ -2450,6 +2427,14 @@ return (
                       <Speaker className="w-4 h-4 text-orange-600" />
                       <span className="text-sm">Alto-falante: Reprodução de áudio</span>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <Gamepad2 className="w-4 h-4 text-green-600" />
+                      <span className="text-sm">Controles: Permite jogar minigames, testar botões, vibrar e controlar jogos compatíveis via Bluetooth.</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Tv className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm">TV: Faça uma Transmissão de tela</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -2514,6 +2499,10 @@ return (
                       <div className="flex items-center gap-2">
                         <Gamepad2 className="w-4 h-4" />
                         <span>Controles</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Tv className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm">TV: Faça uma Transmissão de tela</span>
                       </div>
                     </div>
                   </div>

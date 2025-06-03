@@ -11,6 +11,7 @@ const ESSENTIAL_RESOURCES = [
   '/bluetooth-logo.png',
   '/connected.mp3',
   '/disconnected.mp3',
+  '/waiting.mp3',
   '/favicon.ico',
   '/favicon-16x16.png',
   '/favicon-32x32.png',

@@ -81,6 +81,11 @@ interface BluetoothDevice {
   paired: boolean
   services: string[]
   capabilities?: string[]
+  // Campos de saúde para relógios
+  heartRate?: number
+  steps?: number
+  calories?: number
+  notifications?: number
 }
 
 interface FileTransfer {
@@ -141,6 +146,18 @@ interface MiniGame {
   score: number
 }
 
+// Corrige escopo de updateInstallStatus para uso global no componente
+function updateInstallStatus(setIsInstalled: (v: boolean) => void) {
+  const isStandalone =
+    typeof window !== "undefined" &&
+    (window.matchMedia("(display-mode: standalone)").matches ||
+      window.matchMedia("(display-mode: minimal-ui)").matches ||
+      window.matchMedia("(display-mode: fullscreen)").matches ||
+      (window.navigator as any).standalone === true ||
+      document.referrer.includes("android-app://"))
+  setIsInstalled(isStandalone)
+}
+
 export default function BluetoothCenter() {
   const [isOnline, setIsOnline] = useState(true)
   const [bluetoothSupported, setBluetoothSupported] = useState(true)
@@ -148,16 +165,7 @@ export default function BluetoothCenter() {
 
   // Clear device cache when Bluetooth is turned off
   useEffect(() => {
-    // Listener para mudanças de display-mode (PWA instalado)
-    const updateInstallStatus = () => {
-      const isStandalone =
-        window.matchMedia("(display-mode: standalone)").matches ||
-        window.matchMedia("(display-mode: minimal-ui)").matches ||
-        window.matchMedia("(display-mode: fullscreen)").matches ||
-        (window.navigator as any).standalone === true ||
-        document.referrer.includes("android-app://")
-      setIsInstalled(isStandalone)
-    }
+
 
     if (!bluetoothEnabled) {
       setDevices([])
@@ -334,7 +342,7 @@ export default function BluetoothCenter() {
     window.addEventListener("offline", updateOnlineStatus)
 
     // Verificar suporte ao Bluetooth
-    if (typeof navigator !== "undefined" && navigator.bluetooth) {
+    if (typeof navigator !== "undefined" && (navigator as any).bluetooth) {
       setBluetoothSupported(true)
     } else {
       setBluetoothSupported(false)
@@ -366,7 +374,7 @@ export default function BluetoothCenter() {
 
     // Verificar se já está instalado - melhorado para Chrome Mobile
     if (typeof window !== "undefined") {
-      updateInstallStatus()
+      updateInstallStatus(setIsInstalled)
 
       if (!window.matchMedia("(display-mode: standalone)").matches &&
           !window.matchMedia("(display-mode: minimal-ui)").matches &&
@@ -380,9 +388,9 @@ export default function BluetoothCenter() {
       const mqlStandalone = window.matchMedia("(display-mode: standalone)")
       const mqlMinimal = window.matchMedia("(display-mode: minimal-ui)")
       const mqlFullscreen = window.matchMedia("(display-mode: fullscreen)")
-      mqlStandalone.addEventListener("change", updateInstallStatus)
-      mqlMinimal.addEventListener("change", updateInstallStatus)
-      mqlFullscreen.addEventListener("change", updateInstallStatus)
+      mqlStandalone.addEventListener("change", () => updateInstallStatus(setIsInstalled))
+      mqlMinimal.addEventListener("change", () => updateInstallStatus(setIsInstalled))
+      mqlFullscreen.addEventListener("change", () => updateInstallStatus(setIsInstalled))
 
       // Verificar se é primeira visita offline
       const isFirstVisit = !localStorage.getItem("bluetoothCenterVisited")
@@ -396,14 +404,16 @@ export default function BluetoothCenter() {
 
       // Remover listeners ao desmontar
       return () => {
-        mqlStandalone.removeEventListener("change", updateInstallStatus)
-        mqlMinimal.removeEventListener("change", updateInstallStatus)
-        mqlFullscreen.removeEventListener("change", updateInstallStatus)
+        mqlStandalone.removeEventListener("change", () => updateInstallStatus(setIsInstalled))
+        mqlMinimal.removeEventListener("change", () => updateInstallStatus(setIsInstalled))
+        mqlFullscreen.removeEventListener("change", () => updateInstallStatus(setIsInstalled))
       }
     }
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
-    window.addEventListener("appinstalled", handleAppInstalled)
+    if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+      window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt as any)
+      window.addEventListener("appinstalled", handleAppInstalled as any)
+    }
 
     // Criar elemento de áudio
     audioRef.current = new Audio("/connected.mp3")
@@ -460,22 +470,27 @@ export default function BluetoothCenter() {
       detectGamepads()
     }
 
-    window.addEventListener("gamepadconnected", handleGamepadConnected)
-    window.addEventListener("gamepaddisconnected", handleGamepadDisconnected)
+    if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+      window.addEventListener("gamepadconnected", handleGamepadConnected as any)
+      window.addEventListener("gamepaddisconnected", handleGamepadDisconnected as any)
+    }
 
     // Gamepad polling
     const gamepadInterval = setInterval(detectGamepads, 100)
 
     // Scan automático ao carregar a página (apenas se online)
     const autoScan = async () => {
-      if (navigator.bluetooth && navigator.onLine) {
+      // @ts-ignore
+      if ((navigator as any).bluetooth && navigator.onLine) {
         try {
-          const availability = await navigator.bluetooth.getAvailability()
+          // @ts-ignore
+          const availability = await (navigator as any).bluetooth.getAvailability()
           if (availability) {
             // Tentar carregar dispositivos pareados automaticamente
             try {
-              const devices = await navigator.bluetooth.getDevices()
-              devices.forEach((device) => {
+              // @ts-ignore
+              const devices = await (navigator as any).bluetooth.getDevices()
+              devices.forEach((device: any) => {
                 const deviceType = detectDeviceType(device.name || "")
                 const newDevice: BluetoothDevice = {
                   id: device.id,
@@ -543,7 +558,9 @@ export default function BluetoothCenter() {
       }
     }
 
-    window.addEventListener("beforeunload", handleBeforeUnload)
+    if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+      window.addEventListener("beforeunload", handleBeforeUnload as any)
+    }
 
     // Add pagehide event for better unload handling
     const handlePageHide = () => {
@@ -552,18 +569,23 @@ export default function BluetoothCenter() {
       setDeviceCache([])
     }
 
-    window.addEventListener("pagehide", handlePageHide)
+    if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+      window.addEventListener("pagehide", handlePageHide as any)
+    }
 
     return () => {
-      window.removeEventListener("online", updateOnlineStatus)
-      window.removeEventListener("offline", updateOnlineStatus)
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
-      window.removeEventListener("appinstalled", handleAppInstalled)
-      clearInterval(watchInterval)
-      window.removeEventListener("gamepadconnected", handleGamepadConnected)
-      window.removeEventListener("gamepaddisconnected", handleGamepadDisconnected)
-      clearInterval(gamepadInterval)
-      window.removeEventListener("beforeunload", handleBeforeUnload)
+      if (typeof window !== "undefined" && typeof window.removeEventListener === "function") {
+        window.removeEventListener("online", updateOnlineStatus as any)
+        window.removeEventListener("offline", updateOnlineStatus as any)
+        window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt as any)
+        window.removeEventListener("appinstalled", handleAppInstalled as any)
+        window.removeEventListener("gamepadconnected", handleGamepadConnected as any)
+        window.removeEventListener("gamepaddisconnected", handleGamepadDisconnected as any)
+        window.removeEventListener("beforeunload", handleBeforeUnload as any)
+        window.removeEventListener("pagehide", handlePageHide as any)
+      }
+      if (watchInterval) clearInterval(watchInterval)
+      if (gamepadInterval) clearInterval(gamepadInterval)
     }
   }, [devices])
 
@@ -606,7 +628,8 @@ export default function BluetoothCenter() {
   }
 
   const scanForDevices = async () => {
-    if (!navigator.bluetooth) {
+    // @ts-ignore
+    if (!(navigator as any).bluetooth) {
       setError("Bluetooth não é suportado neste navegador")
       return
     }
@@ -616,7 +639,8 @@ export default function BluetoothCenter() {
 
     try {
       // Primeiro, verificar se o Bluetooth está disponível
-      const availability = await navigator.bluetooth.getAvailability()
+      // @ts-ignore
+      const availability = await (navigator as any).bluetooth.getAvailability()
       if (!availability) {
         setError("Bluetooth não está disponível neste dispositivo")
         setIsScanning(false)
@@ -625,10 +649,11 @@ export default function BluetoothCenter() {
 
       // Tentar obter dispositivos já pareados
       try {
-        const devices = await navigator.bluetooth.getDevices()
+        // @ts-ignore
+        const devices = await (navigator as any).bluetooth.getDevices()
         console.log("Dispositivos pareados encontrados:", devices)
 
-        devices.forEach((device) => {
+        devices.forEach((device: any) => {
           const deviceType = detectDeviceType(device.name || "")
           const newDevice: BluetoothDevice = {
             id: device.id,
@@ -658,7 +683,8 @@ export default function BluetoothCenter() {
 
       // Scan por novos dispositivos próximos
       try {
-        const device = await navigator.bluetooth.requestDevice({
+        // @ts-ignore
+        const device = await (navigator as any).bluetooth.requestDevice({
           acceptAllDevices: true,
           optionalServices: [
             "battery_service",
@@ -798,7 +824,8 @@ export default function BluetoothCenter() {
       // Adicione outros dados de saúde aqui se necessário
 
       // Função para ler nível de bateria
-      const readBatteryLevel = async (gatt: BluetoothRemoteGATTServer) => {
+      // @ts-ignore: BluetoothRemoteGATTServer pode não estar no escopo global do TS
+      const readBatteryLevel = async (gatt: any) => {
         try {
           const service = await gatt.getPrimaryService("battery_service")
           const characteristic = await service.getCharacteristic("battery_level")
@@ -810,7 +837,8 @@ export default function BluetoothCenter() {
       }
 
       // Função para ler batimentos cardíacos
-      const readHeartRate = async (gatt: BluetoothRemoteGATTServer) => {
+      // @ts-ignore: BluetoothRemoteGATTServer pode não estar no escopo global do TS
+      const readHeartRate = async (gatt: any) => {
         try {
           const service = await gatt.getPrimaryService("heart_rate")
           const characteristic = await service.getCharacteristic("heart_rate_measurement")
@@ -828,7 +856,8 @@ export default function BluetoothCenter() {
         setDevices((prev) => prev.map((d) => (d.id === deviceId ? { ...d, connected: true, lastSeen: new Date() } : d)))
       } else {
         // Para novos dispositivos, usar requestDevice
-        const bluetoothDevice = await navigator.bluetooth.requestDevice({
+        // @ts-ignore
+        const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
           filters: [{ name: device.name }],
           optionalServices: [
             "battery_service",
@@ -917,7 +946,14 @@ export default function BluetoothCenter() {
 
       const updatedDevice = devices.find((d) => d.id === deviceId)
       if (updatedDevice) {
-        saveDeviceToCache({ ...updatedDevice, connected: true, paired: true, batteryLevel, heartRate })
+        saveDeviceToCache({
+          ...updatedDevice,
+          connected: true,
+          paired: true,
+          batteryLevel,
+          // Se for relógio, salve também os dados de saúde
+          ...(device.type === "watch" && heartRate !== undefined ? { heartRate } : {})
+        })
       }
 
       setTimeout(() => setSuccess(null), 3000)
@@ -1210,8 +1246,9 @@ const formatTime = (seconds: number) => {
     return buttonNames[index] || `Botão ${index}`
   }
 
+  // Renderiza o conteúdo específico do dispositivo
   const renderDeviceSpecificContent = (device: BluetoothDevice) => {
-    if (!device.connected) return null
+    if (!device.connected) return null;
 
     switch (device.type) {
       case "headphones":
@@ -1691,13 +1728,15 @@ const formatTime = (seconds: number) => {
 
                 <Button
                   onClick={async () => {
-                    if (navigator.bluetooth) {
+                    // @ts-ignore
+                    if ((navigator as any).bluetooth) {
                       try {
                         setIsScanning(true)
                         setError(null)
 
                         // Verificar disponibilidade do Bluetooth
-                        const availability = await navigator.bluetooth.getAvailability()
+                        // @ts-ignore
+                        const availability = await (navigator as any).bluetooth.getAvailability()
                         if (!availability) {
                           setError("Bluetooth não está disponível neste dispositivo")
                           setIsScanning(false)
@@ -1706,7 +1745,8 @@ const formatTime = (seconds: number) => {
 
                         // Tentar encontrar dispositivos disponíveis
                         try {
-                          const device = await navigator.bluetooth.requestDevice({
+                          // @ts-ignore
+                          const device = await (navigator as any).bluetooth.requestDevice({
                             acceptAllDevices: true,
                             optionalServices: [
                               "battery_service",
@@ -2012,13 +2052,17 @@ const formatTime = (seconds: number) => {
                               <div className="space-y-1 sm:space-y-2 mb-3 sm:mb-4">
                                 <div className="flex items-center justify-between text-xs sm:text-sm">
                                   <span className="text-gray-600">Última vez:</span>
-                                  <span>{device.lastSeen.toLocaleTimeString()}</span>
+                                  <span>
+                                    {device.lastSeen && typeof device.lastSeen === "object" && "toLocaleTimeString" in device.lastSeen
+                                      ? (device.lastSeen as Date).toLocaleTimeString()
+                                      : "--"}
+                                  </span>
                                 </div>
                                 <div className="flex items-center justify-between text-xs sm:text-sm">
                                   <span className="text-gray-600">Sinal:</span>
                                   <div className="flex items-center gap-1">
                                     <Signal className="w-3 h-3" />
-                                    <span>{device.signalStrength}/5</span>
+                                    <span>{device.signalStrength != null ? device.signalStrength : "-"}/5</span>
                                   </div>
                                 </div>
                               </div>
@@ -2042,8 +2086,8 @@ const formatTime = (seconds: number) => {
             ) : (
               !isScanning && (
                 <Card>
-                  <CardContent className="text-center py-8">
-                    <Bluetooth className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <CardContent className="text-center py-12">
+                    <Bluetooth className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500 text-sm">Nenhum dispositivo disponível</p>
                     <p className="text-gray-400 text-xs mt-1">
                       Clique em "Procurar Dispositivos" para encontrar dispositivos Bluetooth próximos
@@ -2217,7 +2261,16 @@ const formatTime = (seconds: number) => {
                         placeholder="Nome que outros dispositivos verão"
                         className="text-sm flex-1"
                       />
-                      <Button onClick={saveDeviceName} size="sm" className="px-4">
+                      <Button onClick={() => {
+                        // Salva o nome do dispositivo no localStorage
+                        try {
+                          localStorage.setItem("deviceName", deviceName)
+                        } catch (error) {
+                          console.error("Erro ao salvar nome do dispositivo:", error)
+                        }
+                        setSuccess("Nome do dispositivo salvo!")
+                        setTimeout(() => setSuccess(null), 2000)
+                      }} size="sm" className="px-4">
                         Salvar
                       </Button>
                     </div>
@@ -2348,8 +2401,10 @@ const formatTime = (seconds: number) => {
                                   }}
                                   className="h-8 w-8 p-0 text-red-600"
                                 >
+                                  {/* Ícone de lixeira removido, use um componente ou SVG único aqui se necessário */}
                                   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M280-120q-33 0-56.5-23.5T200-200v-520q-17 0-28.5-11.5T160-760q0-17 11.5-28.5T200-800h160q0-17 11.5-28.5T400-840h160q17 0 28.5 11.5T600-800h160q17 0 28.5 11.5T800-760q0 17-11.5 28.5T760-720v520q0 33-23.5 56.5T680-120H280Zm120-160q17 0 28.5-11.5T440-320v-280q0-17-11.5-28.5T400-640q-17 0-28.5 11.5T360-600v280q0 17 11.5 28.5T400-280Zm160 0q17 0 28.5-11.5T600-320v-280q0-17-11.5-28.5T560-640q-17 0-28.5 11.5T520-600v280q0 17 11.5 28.5T560-280Z"/></svg>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
                                 </Button>
                               </div>
                             </div>
@@ -2514,9 +2569,9 @@ const formatTime = (seconds: number) => {
                         <span>Controles</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Tv className="w-4 h-4 text-blue-600" />
-                        <span className="text-sm">TV: Faça uma Transmissão de tela</span>
-                      </div>
+                          <Tv className="w-4 h-4 text-blue-600" />
+                          <span className="text-sm">TV: Faça uma Transmissão de tela</span>
+                        </div>
                     </div>
                   </div>
                 </CardContent>
@@ -2526,7 +2581,7 @@ const formatTime = (seconds: number) => {
         </Tabs>
 
         {/* Hidden file input */}
-        <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} className="hidden" />
+        <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} className="hidden" title="Selecionar arquivos para transferência" placeholder="Selecionar arquivos" />
         {/* Snake Game Modal */}
         {activeGame === "snake" && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

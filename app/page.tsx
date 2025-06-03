@@ -1481,20 +1481,41 @@ const formatTime = (seconds: number) => {
           <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
             <h4 className="font-semibold text-yellow-800 mb-2 flex items-center gap-2">
               <Tv className="w-4 h-4" />
-              Transmissão de Tela
+              TV Conectada
             </h4>
-            <p className="text-sm text-gray-600 mb-2">Transmita a tela do seu dispositivo para a TV conectada via Bluetooth.</p>
-            <Button
-              onClick={() => {
-                setSuccess("Transmissão de tela iniciada para a TV!")
-                setTimeout(() => setSuccess(null), 3000)
-              }}
-              size="sm"
-              className="w-full"
-            >
-              <Tv className="w-3 h-3 mr-1" />
-              Iniciar Transmissão de Tela
-            </Button>
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-gray-600 mb-2">Transmita a tela do seu dispositivo para a TV conectada via Bluetooth.</p>
+                <Button
+                  onClick={() => {
+                    setSuccess("Transmissão de tela iniciada para a TV!")
+                    setTimeout(() => setSuccess(null), 3000)
+                  }}
+                  size="sm"
+                  className="w-full mb-2"
+                >
+                  <Tv className="w-3 h-3 mr-1" />
+                  Iniciar Transmissão de Tela
+                </Button>
+              </div>
+              <div>
+                <h5 className="font-semibold text-xs text-yellow-900 mb-1 flex items-center gap-1">
+                  <Volume2 className="w-4 h-4" />
+                  Controle de Volume
+                </h5>
+                <div className="flex items-center gap-2">
+                  <Button size="icon" variant="outline" aria-label="Diminuir volume" onClick={() => setVolume(Math.max(0, volume - 10))}>
+                    <span>-</span>
+                  </Button>
+                  <Progress value={volume} className="flex-1" />
+                  <span className="text-xs w-8 text-center">{volume}%</span>
+                  <Button size="icon" variant="outline" aria-label="Aumentar volume" onClick={() => setVolume(Math.min(100, volume + 10))}>
+                    <span>+</span>
+                  </Button>
+                </div>
+              </div>
+              {/* Espaço para futuros controles específicos de TV */}
+            </div>
           </div>
         )
       default:
@@ -1503,14 +1524,6 @@ const formatTime = (seconds: number) => {
             <p className="text-sm text-gray-600">Dispositivo conectado com funcionalidades básicas</p>
           </div>
         )
-    }
-  }
-      localStorage.setItem("deviceName", deviceName)
-      setSuccess("Nome do dispositivo salvo com sucesso!")
-      setTimeout(() => setSuccess(null), 3000)
-    } catch (error) {
-      setError("Erro ao salvar nome do dispositivo")
-      setTimeout(() => setError(null), 3000)
     }
   }
 

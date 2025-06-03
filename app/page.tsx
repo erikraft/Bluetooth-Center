@@ -1502,6 +1502,30 @@ const formatTime = (seconds: number) => {
     }
   }
 
+return (
+  <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    {/* Header */}
+    <header className="bg-white shadow-sm border-b">
+      <div className="max-w-7xl mx-auto px-3 py-3 sm:px-4 sm:py-4">
+        {/* ... */}
+      </div>
+    </header>
+    {/* Main Content */}
+    <main className="max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-6">
+      {/* Alerts */}
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          {/* ... */}
+        </Alert>
+      )}
+      {success && (
+        <Alert className="mb-6 border-green-200 bg-green-50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          {/* ... */}
+        </Alert>
+      )}
+  
   const saveDeviceName = () => {
     try {
       localStorage.setItem("deviceName", deviceName)

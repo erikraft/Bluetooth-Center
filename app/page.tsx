@@ -162,6 +162,7 @@ export default function BluetoothCenter() {
   const [isOnline, setIsOnline] = useState(true)
   const [bluetoothSupported, setBluetoothSupported] = useState(true)
   const [bluetoothEnabled, setBluetoothEnabled] = useState(true)
+  const [connectingDeviceId, setConnectingDeviceId] = useState<string | null>(null)
 
   // Clear device cache when Bluetooth is turned off
   useEffect(() => {
@@ -661,6 +662,11 @@ export default function BluetoothCenter() {
   }
 
   const scanForDevices = async () => {
+    if (isScanning) {
+      // Prevent multiple concurrent scans
+      return
+    }
+
     // @ts-ignore
     if (!(navigator as any).bluetooth) {
       setError("Bluetooth não é suportado neste navegador")
@@ -847,8 +853,18 @@ export default function BluetoothCenter() {
   }
 
   const connectDevice = async (deviceId: string) => {
+    if (connectingDeviceId) {
+      // Prevent multiple concurrent connections
+      return
+    }
+
+    setConnectingDeviceId(deviceId)
+
     const device = devices.find((d) => d.id === deviceId)
-    if (!device) return
+    if (!device) {
+      setConnectingDeviceId(null)
+      return
+    }
 
     try {
       let wasJustPaired = false
@@ -994,6 +1010,8 @@ export default function BluetoothCenter() {
       setError(`Erro ao conectar: ${err.message}`)
       setTimeout(() => setError(null), 3000)
       console.error("Connection error:", err)
+    } finally {
+      setConnectingDeviceId(null)
     }
   }
 
@@ -2602,7 +2620,7 @@ const formatTime = (seconds: number) => {
                         <span>Controles</span>
                       </div>
                       <div className="flex items-center gap-2">
-                          <Tv className="w-4 h-4 text-blue-600" />
+                          <Tv className="w-4 h-4" />
                           <span className="text-sm">TV: Faça uma Transmissão de tela</span>
                         </div>
                     </div>

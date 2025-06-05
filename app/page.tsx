@@ -2559,62 +2559,71 @@ const formatTime = (seconds: number) => {
                     <Label className="text-sm">Histórico de Dispositivos</Label>
                     <div className="space-y-2 max-h-60 overflow-y-auto">
                       {deviceCache.length > 0 ? (
-                        deviceCache.map((device) => {
-                          const DeviceIcon = getDeviceIcon(device.type)
-                          return (
-                            <div
-                              key={device.id}
-                              className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
-                            >
-                              <div className="flex items-center gap-2">
-                                <DeviceIcon className="w-4 h-4 text-gray-600" />
-                                <div>
-                                  <p className="text-sm font-medium">{getDisplayName(device)}</p>
-                                  <p className="text-xs text-gray-500">
-                                    Última vez: {device.lastSeen.toLocaleString()}
-                                  </p>
+                        deviceCache
+                          .sort((a, b) => {
+                            // Ordena por última vez visto (mais recente primeiro)
+                            const aTime = a.lastSeen ? new Date(a.lastSeen).getTime() : 0;
+                            const bTime = b.lastSeen ? new Date(b.lastSeen).getTime() : 0;
+                            return bTime - aTime;
+                          })
+                          .map((device) => {
+                            const DeviceIcon = getDeviceIcon(device.type);
+                            return (
+                              <div
+                                key={device.id}
+                                className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <DeviceIcon className="w-4 h-4 text-gray-600" />
+                                  <div>
+                                    <p className="text-sm font-medium">{getDisplayName(device)}</p>
+                                    <p className="text-xs text-gray-500">
+                                      Última vez: {device.lastSeen && typeof device.lastSeen === "object" && "toLocaleString" in device.lastSeen ? (device.lastSeen as Date).toLocaleString() : (typeof device.lastSeen === "string" ? new Date(device.lastSeen).toLocaleString() : "-")}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      Tipo: {device.type.charAt(0).toUpperCase() + device.type.slice(1)}
+                                    </p>
+                                    {device.paired && <span className="text-xs text-green-600">Pareado</span>}
+                                  </div>
+                                </div>
+                                <div className="flex gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setEditingDeviceName(device.id);
+                                      setTempDeviceName(getDisplayName(device));
+                                    }}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <Edit3 className="w-3 h-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      const updatedCache = deviceCache.filter((d) => d.id !== device.id);
+                                      setDeviceCache(updatedCache);
+                                      const updatedNames = { ...customDeviceNames };
+                                      delete updatedNames[device.id];
+                                      setCustomDeviceNames(updatedNames);
+                                      try {
+                                        localStorage.setItem("bluetoothDeviceCache", JSON.stringify(updatedCache));
+                                        localStorage.setItem("customDeviceNames", JSON.stringify(updatedNames));
+                                      } catch (error) {
+                                        console.error("Erro ao remover do cache:", error);
+                                      }
+                                    }}
+                                    className="h-8 w-8 p-0 text-red-600"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </Button>
                                 </div>
                               </div>
-                              <div className="flex gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    setEditingDeviceName(device.id)
-                                    setTempDeviceName(getDisplayName(device))
-                                  }}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Edit3 className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    const updatedCache = deviceCache.filter((d) => d.id !== device.id)
-                                    setDeviceCache(updatedCache)
-                                    const updatedNames = { ...customDeviceNames }
-                                    delete updatedNames[device.id]
-                                    setCustomDeviceNames(updatedNames)
-
-                                    try {
-                                      localStorage.setItem("bluetoothDeviceCache", JSON.stringify(updatedCache))
-                                      localStorage.setItem("customDeviceNames", JSON.stringify(updatedNames))
-                                    } catch (error) {
-                                      console.error("Erro ao remover do cache:", error)
-                                    }
-                                  }}
-                                  className="h-8 w-8 p-0 text-red-600"
-                                >
-                                  {/* Ícone de lixeira removido, use um componente ou SVG único aqui se necessário */}
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                </Button>
-                              </div>
-                            </div>
-                          )
-                        })
+                            );
+                          })
                       ) : (
                         <p className="text-sm text-gray-500 text-center py-4">Nenhum dispositivo no histórico</p>
                       )}

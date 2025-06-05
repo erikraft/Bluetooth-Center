@@ -25,7 +25,7 @@ const NOTIFY_CHAR_UUID = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
       let startTime = new Date();
 
       // Adiciona entrada na lista de transferências
-      setFiles((prev) => [
+      setFiles((prev: FileTransfer[]) => [
         ...prev,
         {
           id: fileTransferId,
@@ -52,21 +52,21 @@ const NOTIFY_CHAR_UUID = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
           fileName = new TextDecoder().decode(chunk.slice(6, 6 + nameLen));
           receivedChunks.push(chunk.slice(6 + nameLen));
           receivedBytes += chunk.length - (6 + nameLen);
-          setFiles((prev) => prev.map((f) => f.id === fileTransferId ? { ...f, name: fileName, size: expectedSize } : f));
+          setFiles((prev: FileTransfer[]) => prev.map((f) => f.id === fileTransferId ? { ...f, name: fileName, size: expectedSize } : f));
         } else {
           receivedChunks.push(chunk);
           receivedBytes += chunk.length;
         }
         // Atualiza progresso
-        setFiles((prev) => prev.map((f) => f.id === fileTransferId ? { ...f, progress: Math.round((receivedBytes / (expectedSize || 1)) * 100) } : f));
+        setFiles((prev: FileTransfer[]) => prev.map((f) => f.id === fileTransferId ? { ...f, progress: Math.round((receivedBytes / (expectedSize || 1)) * 100) } : f));
 
         // Fim da transferência
         if (expectedSize > 0 && receivedBytes >= expectedSize) {
           notifyChar.removeEventListener('characteristicvaluechanged', onNotification);
           notifyChar.stopNotifications();
           const fileBlob = new Blob(receivedChunks, { type: 'application/octet-stream' });
-          setFiles((prev) => prev.map((f) => f.id === fileTransferId ? { ...f, status: 'completed', endTime: new Date() } : f));
-          setHistory((prev) => [
+          setFiles((prev: FileTransfer[]) => prev.map((f) => f.id === fileTransferId ? { ...f, status: 'completed', endTime: new Date() } : f));
+          setHistory((prev: TransferHistory[]) => [
             {
               id: `hist-${Date.now()}`,
               fileName,
@@ -82,7 +82,7 @@ const NOTIFY_CHAR_UUID = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
           setSuccess(`Arquivo recebido: ${fileName}`);
           // Salva o blob para download
           const url = URL.createObjectURL(fileBlob);
-          setFiles((prev) => prev.map((f) => f.id === fileTransferId ? { ...f, downloadUrl: url } : f));
+          setFiles((prev: FileTransfer[]) => prev.map((f) => f.id === fileTransferId ? { ...f, downloadUrl: url } : f));
         }
       };
 
@@ -92,6 +92,16 @@ const NOTIFY_CHAR_UUID = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
       setError('Erro ao receber arquivo via Bluetooth: ' + (err instanceof Error ? err.message : String(err)));
       setTimeout(() => setError(null), 5000);
     }
+  };
+
+  // Handler para notificações BLE, tipado para evitar erro 'never'
+  const onNotification = (event: Event) => {
+    const target = event.target as BluetoothRemoteGATTCharacteristic;
+    const value = target.value;
+    if (!value) return;
+    const chunk = new Uint8Array(value.buffer);
+
+    // Restante do código do handler...
   };
   // Adiciona botão para receber arquivo na UI de dispositivos conectados (exemplo para laptop/phone)
   // (Você pode adaptar para outros tipos de dispositivo se desejar)
@@ -207,6 +217,7 @@ interface FileTransfer {
   startTime: Date
   endTime?: Date
   speed?: number
+  downloadUrl?: string
 }
 
 interface TransferHistory {
@@ -457,71 +468,65 @@ export default function BluetoothCenter() {
       setBluetoothSupported(false)
     }
 
-    // PWA Install Events com melhorias específicas para Chrome Mobile
+    // PWA Install Events e listeners
     const handleBeforeInstallPrompt = (e: any) => {
-      e.preventDefault()
-      setDeferredPrompt(e)
-      console.log("PWA: Install prompt ready")
-      setIsInstallable(true)
-
-      // Mostrar dica sobre instalação offline
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
       if (!navigator.onLine) {
-        setSuccess("App pode ser instalado mesmo offline! Clique em 'Instalar'")
-        setTimeout(() => setSuccess(null), 5000)
+        setSuccess("App pode ser instalado mesmo offline! Clique em 'Instalar'");
+        setTimeout(() => setSuccess(null), 5000);
       }
-    }
+    };
 
     const handleAppInstalled = () => {
-      console.log("PWA: App installed successfully")
-      setIsInstalled(true)
-      setIsInstallable(false)
-      setDeferredPrompt(null)
-      setSuccess("App instalado! Agora funciona 100% offline 🎉")
-      setTimeout(() => setSuccess(null), 4000)
-    }
+      setIsInstalled(true);
+      setIsInstallable(false);
+      setDeferredPrompt(null);
+      setSuccess("App instalado! Agora funciona 100% offline 🎉");
+      setTimeout(() => setSuccess(null), 4000);
+    };
 
-
-    // Verificar se já está instalado - melhorado para Chrome Mobile
     if (typeof window !== "undefined") {
-      updateInstallStatus(setIsInstalled)
+      updateInstallStatus(setIsInstalled);
+      setIsInstallable(!(
+        window.matchMedia("(display-mode: standalone)").matches ||
+        window.matchMedia("(display-mode: minimal-ui)").matches ||
+        window.matchMedia("(display-mode: fullscreen)").matches ||
+        (window.navigator as any).standalone === true ||
+        document.referrer.includes("android-app://")
+      ));
 
-      if (!window.matchMedia("(display-mode: standalone)").matches &&
-          !window.matchMedia("(display-mode: minimal-ui)").matches &&
-          !window.matchMedia("(display-mode: fullscreen)").matches &&
-          !(window.navigator as any).standalone === true &&
-          !document.referrer.includes("android-app://")) {
-        setIsInstallable(true)
-      }
+      // Listeners para mudanças de display-mode
+      const mqlStandalone = window.matchMedia("(display-mode: standalone)");
+      const mqlMinimal = window.matchMedia("(display-mode: minimal-ui)");
+      const mqlFullscreen = window.matchMedia("(display-mode: fullscreen)");
+      const updateStatus = () => updateInstallStatus(setIsInstalled);
+      mqlStandalone.addEventListener("change", updateStatus);
+      mqlMinimal.addEventListener("change", updateStatus);
+      mqlFullscreen.addEventListener("change", updateStatus);
 
-      // Listener para mudanças de display-mode
-      const mqlStandalone = window.matchMedia("(display-mode: standalone)")
-      const mqlMinimal = window.matchMedia("(display-mode: minimal-ui)")
-      const mqlFullscreen = window.matchMedia("(display-mode: fullscreen)")
-      mqlStandalone.addEventListener("change", () => updateInstallStatus(setIsInstalled))
-      mqlMinimal.addEventListener("change", () => updateInstallStatus(setIsInstalled))
-      mqlFullscreen.addEventListener("change", () => updateInstallStatus(setIsInstalled))
-
-      // Verificar se é primeira visita offline
-      const isFirstVisit = !localStorage.getItem("bluetoothCenterVisited")
+      // Primeira visita offline
+      const isFirstVisit = !localStorage.getItem("bluetoothCenterVisited");
       if (isFirstVisit) {
-        localStorage.setItem("bluetoothCenterVisited", "true")
+        localStorage.setItem("bluetoothCenterVisited", "true");
         if (!navigator.onLine) {
-          setSuccess("Bem-vindo! Este app funciona completamente offline 🚀")
-          setTimeout(() => setSuccess(null), 5000)
+          setSuccess("Bem-vindo! Este app funciona completamente offline 🚀");
+          setTimeout(() => setSuccess(null), 5000);
         }
       }
 
       // Remover listeners ao desmontar
       return () => {
-        mqlStandalone.removeEventListener("change", () => updateInstallStatus(setIsInstalled))
-        mqlMinimal.removeEventListener("change", () => updateInstallStatus(setIsInstalled))
-        mqlFullscreen.removeEventListener("change", () => updateInstallStatus(setIsInstalled))
-      }
+        mqlStandalone.removeEventListener("change", updateStatus);
+        mqlMinimal.removeEventListener("change", updateStatus);
+        mqlFullscreen.removeEventListener("change", updateStatus);
+      };
     }
 
     if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
-      window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt as any)
-      window.addEventListener("appinstalled", handleAppInstalled as any)
+      window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt as any);
+      window.addEventListener("appinstalled", handleAppInstalled as any);
     }
 
     // Criar elemento de áudio
@@ -1224,7 +1229,7 @@ export default function BluetoothCenter() {
   const CHUNK_SIZE = 512;
 
   const sendFileOverBluetooth = async (file: File, device: BluetoothDevice, fileTransferId: string) => {
-    setFiles((prev) => prev.map((f) => f.id === fileTransferId ? { ...f, status: "transferring", progress: 0 } : f));
+    setFiles((prev: FileTransfer[]) => prev.map((f) => f.id === fileTransferId ? { ...f, status: "transferring", progress: 0 } : f));
     try {
       // Solicita o dispositivo Bluetooth novamente para garantir acesso ao GATT
       // (pode ser necessário ajustar para usar o device já conectado, se possível)
@@ -1248,14 +1253,14 @@ export default function BluetoothCenter() {
         const chunk = fileBuffer.slice(start, end);
         await characteristic.writeValue(new Uint8Array(chunk));
         sentBytes = end;
-        setFiles((prev) => prev.map((f) =>
+        setFiles((prev: FileTransfer[]) => prev.map((f) =>
           f.id === fileTransferId
             ? { ...f, progress: Math.round((sentBytes / fileBuffer.byteLength) * 100) }
             : f
         ));
       }
-      setFiles((prev) => prev.map((f) => f.id === fileTransferId ? { ...f, progress: 100, status: "completed", endTime: new Date() } : f));
-      setHistory((prev) => [
+      setFiles((prev: FileTransfer[]) => prev.map((f) => f.id === fileTransferId ? { ...f, progress: 100, status: "completed", endTime: new Date() } : f));
+      setHistory((prev: TransferHistory[]) => [
         {
           id: `hist-${Date.now()}`,
           fileName: file.name,
@@ -1269,7 +1274,7 @@ export default function BluetoothCenter() {
         ...prev
       ]);
     } catch (err) {
-      setFiles((prev) => prev.map((f) => f.id === fileTransferId ? { ...f, status: "error" } : f));
+      setFiles((prev: FileTransfer[]) => prev.map((f) => f.id === fileTransferId ? { ...f, status: "error" } : f));
       setError("Erro ao transferir arquivo via Bluetooth: " + (err instanceof Error ? err.message : String(err)));
       setTimeout(() => setError(null), 5000);
     }
@@ -1295,7 +1300,7 @@ export default function BluetoothCenter() {
         direction: "send",
         startTime: new Date(),
       };
-      setFiles((prev) => [...prev, newFile]);
+      setFiles((prev: FileTransfer[]) => [...prev, newFile]);
       sendFileOverBluetooth(file, device, fileTransferId);
     });
   };
@@ -1325,67 +1330,32 @@ const formatTime = (seconds: number) => {
   return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
+  // Botão de instalar/abrir PWA
   const installPWA = async () => {
-    console.log("Botão de instalação clicado", {
-      temPrompt: !!deferredPrompt,
-      isInstallable,
-      isInstalled,
-      userAgent: navigator.userAgent
-    })
-
+    if (isInstalled) {
+      // Tenta abrir o PWA instalado
+      if (window.matchMedia("(display-mode: standalone)").matches ||
+          (window.navigator as any).standalone === true) {
+        window.open(window.location.href, "_self");
+      } else {
+        // Tenta abrir via protocolo (Android Chrome)
+        window.location.href = window.location.origin;
+      }
+      return;
+    }
     if (deferredPrompt) {
-      try {
-        // Mostrar o prompt de instalação
-        const result = await deferredPrompt.prompt()
-        console.log("Prompt result:", result)
-        
-        // Aguardar a escolha do usuário
-        const { outcome } = await deferredPrompt.userChoice
-        console.log("Escolha do usuário:", outcome)
-
-        if (outcome === "accepted") {
-          setIsInstalled(true)
-          setIsInstallable(false)
-          setSuccess("App instalado com sucesso! 🎉")
-        } else {
-          setError("Instalação cancelada pelo usuário")
-        }
-
-        setDeferredPrompt(null)
-      } catch (error) {
-        console.error("Erro ao instalar PWA:", error)
-        setError("Erro durante a instalação. Tente novamente.")
+      deferredPrompt.prompt();
+      const choiceResult = await deferredPrompt.userChoice;
+      if (choiceResult && choiceResult.outcome === "accepted") {
+        setIsInstalled(true);
+        setIsInstallable(false);
+        setDeferredPrompt(null);
       }
     } else {
-      // Instruções específicas por navegador
-      const userAgent = navigator.userAgent.toLowerCase()
-      
-      if (userAgent.includes("chrome") && userAgent.includes("mobile")) {
-        setSuccess(
-          "Para instalar no Chrome Mobile: Toque nos 3 pontos (⋮) no canto superior direito > 'Instalar aplicativo' ou 'Adicionar à tela inicial'"
-        )
-      } else if (userAgent.includes("chrome")) {
-        setSuccess(
-          "Para instalar no Chrome: Clique no ícone de instalação na barra de endereços ou nos 3 pontos (⋮) > 'Instalar Bluetooth Center'"
-        )
-      } else if (userAgent.includes("firefox")) {
-        setSuccess("Para instalar no Firefox: Clique no ícone + na barra de endereços")
-      } else if (userAgent.includes("safari")) {
-        setSuccess("Para instalar no Safari: Toque em Compartilhar > 'Adicionar à Tela de Início'")
-      } else if (userAgent.includes("edge")) {
-        setSuccess("Para instalar no Edge: Clique nos 3 pontos (...) > 'Aplicativos' > 'Instalar este site como aplicativo'")
-      } else {
-        setSuccess("Para instalar: Use o menu do seu navegador para encontrar a opção 'Instalar aplicativo' ou 'Adicionar à tela inicial'")
-      }
-
-      setTimeout(() => setSuccess(null), 8000)
+      setSuccess("Para instalar, use o menu do navegador: 'Adicionar à tela inicial'.");
+      setTimeout(() => setSuccess(null), 8000);
     }
-
-    setTimeout(() => {
-      setError(null)
-      setSuccess(null)
-    }, 8000)
-  }
+  };
 
   // Music Player Functions
   const playPause = () => {
@@ -1832,32 +1802,21 @@ const formatTime = (seconds: number) => {
               </div>
 
               {/* PWA Install / Abrir App */}
-              {!isInstalled ? (
-                <Button
-                  onClick={installPWA}
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white transition-colors flex-shrink-0 px-2 sm:px-4"
-                >
-                  <Download className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="ml-1 sm:ml-2 text-xs sm:text-sm">Instalar</span>
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => {
-                    // Preferencialmente abre em standalone, mas fallback para nova aba
-                    if (window.matchMedia("(display-mode: browser)").matches) {
-                      window.open("/", "_blank")
-                    } else {
-                      window.location.href = "/"
-                    }
-                  }}
-                  size="sm"
-                  className="bg-green-600 hover:bg-green-700 text-white transition-colors flex-shrink-0 px-2 sm:px-4"
-                >
-                  <Download className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="ml-1 sm:ml-2 text-xs sm:text-sm">Abrir App</span>
-                </Button>
-              )}
+              <Button
+                onClick={installPWA}
+                size="sm"
+                className={
+                  (!isInstalled
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-green-600 hover:bg-green-700") +
+                  " text-white transition-colors flex-shrink-0 px-2 sm:px-4"
+                }
+              >
+                <Download className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="ml-1 sm:ml-2 text-xs sm:text-sm">
+                  {isInstalled ? "Abrir" : "Instalar"}
+                </span>
+              </Button>
             </div>
           </div>
         </div>

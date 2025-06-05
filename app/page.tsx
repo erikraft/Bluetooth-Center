@@ -1,4 +1,111 @@
 "use client"
+const NOTIFY_CHAR_UUID = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
+
+  // Recepção real de arquivo via BLE
+  const receiveFileOverBluetooth = async (device: BluetoothDevice) => {
+    setSuccess('Aguardando envio do arquivo via Bluetooth...');
+    setError(null);
+    try {
+      // Solicita o dispositivo Bluetooth novamente para garantir acesso ao GATT
+      // @ts-ignore
+      const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+        filters: [{ name: device.name }],
+        optionalServices: [SERVICE_UUID]
+      });
+      // @ts-ignore
+      const server = await bluetoothDevice.gatt.connect();
+      const service = await server.getPrimaryService(SERVICE_UUID);
+      const notifyChar = await service.getCharacteristic(NOTIFY_CHAR_UUID);
+
+      let receivedChunks: Uint8Array[] = [];
+      let receivedBytes = 0;
+      let expectedSize = 0;
+      let fileName = `arquivo-recebido-${Date.now()}`;
+      let fileTransferId = `recv-${Date.now()}`;
+      let startTime = new Date();
+
+      // Adiciona entrada na lista de transferências
+      setFiles((prev) => [
+        ...prev,
+        {
+          id: fileTransferId,
+          name: fileName,
+          size: 0,
+          progress: 0,
+          status: 'transferring',
+          deviceId: device.id,
+          deviceName: device.name,
+          direction: 'receive',
+          startTime,
+        },
+      ]);
+
+      // Handler para cada notificação recebida
+      const onNotification = (event: any) => {
+        const value = event.target.value;
+        const chunk = new Uint8Array(value.buffer);
+
+        // Protocolo simples: primeiros 8 bytes = tamanho total, próximos 2 bytes = nome tamanho, depois nome, depois dados
+        if (receivedBytes === 0) {
+          expectedSize = new DataView(chunk.buffer).getUint32(0, true);
+          const nameLen = new DataView(chunk.buffer).getUint16(4, true);
+          fileName = new TextDecoder().decode(chunk.slice(6, 6 + nameLen));
+          receivedChunks.push(chunk.slice(6 + nameLen));
+          receivedBytes += chunk.length - (6 + nameLen);
+          setFiles((prev) => prev.map((f) => f.id === fileTransferId ? { ...f, name: fileName, size: expectedSize } : f));
+        } else {
+          receivedChunks.push(chunk);
+          receivedBytes += chunk.length;
+        }
+        // Atualiza progresso
+        setFiles((prev) => prev.map((f) => f.id === fileTransferId ? { ...f, progress: Math.round((receivedBytes / (expectedSize || 1)) * 100) } : f));
+
+        // Fim da transferência
+        if (expectedSize > 0 && receivedBytes >= expectedSize) {
+          notifyChar.removeEventListener('characteristicvaluechanged', onNotification);
+          notifyChar.stopNotifications();
+          const fileBlob = new Blob(receivedChunks, { type: 'application/octet-stream' });
+          setFiles((prev) => prev.map((f) => f.id === fileTransferId ? { ...f, status: 'completed', endTime: new Date() } : f));
+          setHistory((prev) => [
+            {
+              id: `hist-${Date.now()}`,
+              fileName,
+              fileSize: expectedSize,
+              deviceName: device.name,
+              direction: 'receive',
+              status: 'completed',
+              timestamp: new Date(),
+              duration: Math.floor((Date.now() - startTime.getTime()) / 1000),
+            },
+            ...prev
+          ]);
+          setSuccess(`Arquivo recebido: ${fileName}`);
+          // Salva o blob para download
+          const url = URL.createObjectURL(fileBlob);
+          setFiles((prev) => prev.map((f) => f.id === fileTransferId ? { ...f, downloadUrl: url } : f));
+        }
+      };
+
+      await notifyChar.startNotifications();
+      notifyChar.addEventListener('characteristicvaluechanged', onNotification);
+    } catch (err: any) {
+      setError('Erro ao receber arquivo via Bluetooth: ' + (err instanceof Error ? err.message : String(err)));
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+  // Adiciona botão para receber arquivo na UI de dispositivos conectados (exemplo para laptop/phone)
+  // (Você pode adaptar para outros tipos de dispositivo se desejar)
+  // ...
+  // No renderDeviceSpecificContent, adicione:
+  // ...
+  // Exemplo para laptop/phone:
+  // Dentro do case "laptop":
+  // <Button onClick={() => receiveFileOverBluetooth(device)} size="sm" className="w-full mt-2" variant="outline">
+  //   <Download className="w-3 h-3 mr-1" /> Receber Arquivo
+  // </Button>
+  // ...
+
+
 
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
@@ -425,15 +532,7 @@ export default function BluetoothCenter() {
     // Carregar dados salvos
     loadFromLocalStorage()
 
-    // Simular dados do relógio em tempo real
-    const watchInterval = setInterval(() => {
-      setWatchData((prev) => ({
-        ...prev,
-        heartRate: Math.floor(Math.random() * 20) + 65, // 65-85 bpm
-        steps: prev.steps + Math.floor(Math.random() * 5),
-        calories: prev.calories + Math.floor(Math.random() * 2),
-      }))
-    }, 5000)
+
 
     // Gamepad detection
     const detectGamepads = () => {
@@ -597,24 +696,32 @@ export default function BluetoothCenter() {
     if (!audioRefWaiting.current) return
 
     const hasAvailableNotPaired = devices.some((d) => !d.connected && !d.paired)
+    console.log('[AUDIO] waiting.mp3 | hasAvailableNotPaired:', hasAvailableNotPaired, '| devices:', devices);
 
     if (hasAvailableNotPaired) {
       try {
         audioRefWaiting.current.currentTime = 0
         const playPromise = audioRefWaiting.current.play()
         if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            const playOnClick = () => {
-              if (audioRefWaiting.current) {
-                audioRefWaiting.current.play().catch(console.error)
+          playPromise
+            .then(() => {
+              console.log('[AUDIO] waiting.mp3 reproduzido com sucesso');
+            })
+            .catch(() => {
+              console.log('[AUDIO] waiting.mp3 bloqueado, aguardando clique do usuário');
+              const playOnClick = () => {
+                if (audioRefWaiting.current) {
+                  audioRefWaiting.current.play().then(() => {
+                    console.log('[AUDIO] waiting.mp3 reproduzido após clique');
+                  }).catch(console.error)
+                }
+                document.removeEventListener('click', playOnClick)
               }
-              document.removeEventListener('click', playOnClick)
-            }
-            document.addEventListener('click', playOnClick, { once: true })
-          })
+              document.addEventListener('click', playOnClick, { once: true })
+            })
         }
       } catch (error) {
-        console.error("Erro ao reproduzir som waiting.mp3:", error)
+        console.error('[AUDIO] Erro ao reproduzir som waiting.mp3:', error)
       }
     } else {
       audioRefWaiting.current.pause()
@@ -901,8 +1008,39 @@ export default function BluetoothCenter() {
 
       // Se o dispositivo já está pareado, tentar conectar diretamente
       if (device.paired) {
-        // Simular conexão para dispositivos pareados
-        setDevices((prev) => prev.map((d) => (d.id === deviceId ? { ...d, connected: true, lastSeen: new Date() } : d)))
+        // Conectar realmente ao dispositivo pareado via BLE
+        try {
+          const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+            filters: [{ name: device.name }],
+            optionalServices: [
+              "battery_service",
+              "device_information",
+              "heart_rate",
+              "fitness_machine",
+              "human_interface_device",
+              "0000110b-0000-1000-8000-00805f9b34fb", // Audio Sink
+              "0000180f-0000-1000-8000-00805f9b34fb", // Battery Service UUID
+              "0000180a-0000-1000-8000-00805f9b34fb", // Device Information Service
+              "0000180d-0000-1000-8000-00805f9b34fb", // Heart Rate Service
+              "00001812-0000-1000-8000-00805f9b34fb", // Human Interface Device
+            ],
+          });
+          const server = await bluetoothDevice.gatt.connect();
+          let batteryLevel = undefined;
+          let heartRate = undefined;
+          try {
+            batteryLevel = await readBatteryLevel(server);
+          } catch {}
+          try {
+            if (device.type === "watch") {
+              heartRate = await readHeartRate(server);
+            }
+          } catch {}
+          setDevices((prev) => prev.map((d) => (d.id === deviceId ? { ...d, connected: true, paired: true, lastSeen: new Date(), batteryLevel, ...(device.type === "watch" && heartRate !== undefined ? { heartRate } : {}) } : d)));
+        } catch (err) {
+          // Falha ao conectar
+          setDevices((prev) => prev.map((d) => (d.id === deviceId ? { ...d, connected: false } : d)));
+        }
       } else {
         // Para novos dispositivos, usar requestDevice
         // @ts-ignore
@@ -956,20 +1094,23 @@ export default function BluetoothCenter() {
       // Reproduzir som de conexão APENAS quando o dispositivo foi pareado agora
       if (wasJustPaired && audioRef.current) {
         try {
+          console.log('[AUDIO] connected.mp3 | Tentando reproduzir');
           audioRef.current.currentTime = 0
           // Tentar reproduzir com interação do usuário
           const playPromise = audioRef.current.play()
           if (playPromise !== undefined) {
             playPromise
               .then(() => {
-                console.log("Som de pareamento reproduzido com sucesso")
+                console.log('[AUDIO] connected.mp3 reproduzido com sucesso')
               })
               .catch((error) => {
-                console.log("Erro ao reproduzir som automaticamente:", error)
+                console.log('[AUDIO] connected.mp3 bloqueado, aguardando clique do usuário', error)
                 // Tentar reproduzir após interação do usuário
                 const playOnClick = () => {
                   if (audioRef.current) {
-                    audioRef.current.play().catch(console.error)
+                    audioRef.current.play().then(() => {
+                      console.log('[AUDIO] connected.mp3 reproduzido após clique');
+                    }).catch(console.error)
                   }
                   document.removeEventListener('click', playOnClick)
                 }
@@ -977,7 +1118,7 @@ export default function BluetoothCenter() {
               })
           }
         } catch (error) {
-          console.error("Erro ao reproduzir som:", error)
+          console.error('[AUDIO] Erro ao reproduzir som connected.mp3:', error)
         }
       }
 
@@ -1031,21 +1172,29 @@ export default function BluetoothCenter() {
 
     if (!isUnloading && audioRefDisconnected.current) {
       try {
+        console.log('[AUDIO] disconnected.mp3 | Tentando reproduzir');
         audioRefDisconnected.current.currentTime = 0
         const playPromise = audioRefDisconnected.current.play()
         if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            const playOnClick = () => {
-              if (audioRefDisconnected.current) {
-                audioRefDisconnected.current.play().catch(console.error)
+          playPromise
+            .then(() => {
+              console.log('[AUDIO] disconnected.mp3 reproduzido com sucesso')
+            })
+            .catch(() => {
+              console.log('[AUDIO] disconnected.mp3 bloqueado, aguardando clique do usuário');
+              const playOnClick = () => {
+                if (audioRefDisconnected.current) {
+                  audioRefDisconnected.current.play().then(() => {
+                    console.log('[AUDIO] disconnected.mp3 reproduzido após clique');
+                  }).catch(console.error)
+                }
+                document.removeEventListener('click', playOnClick)
               }
-              document.removeEventListener('click', playOnClick)
-            }
-            document.addEventListener('click', playOnClick, { once: true })
-          })
+              document.addEventListener('click', playOnClick, { once: true })
+            })
         }
       } catch (error) {
-        console.error("Erro ao reproduzir som de desconexão:", error)
+        console.error('[AUDIO] Erro ao reproduzir som disconnected.mp3:', error)
       }
     }
   }
@@ -1069,67 +1218,89 @@ export default function BluetoothCenter() {
     }
   }
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = event.target.files
-    if (!selectedFiles || !selectedDevice) return
+  // Envio real de arquivo via BLE
+  const SERVICE_UUID = '8e7c12e0-5f9b-4b57-b6e0-07c58b4fd328';
+  const WRITE_CHAR_UUID = '77f57404-5e34-42e7-9502-3f6a3a0e091b';
+  const CHUNK_SIZE = 512;
 
-    const device = devices.find((d) => d.id === selectedDevice)
-    if (!device) return
+  const sendFileOverBluetooth = async (file: File, device: BluetoothDevice, fileTransferId: string) => {
+    setFiles((prev) => prev.map((f) => f.id === fileTransferId ? { ...f, status: "transferring", progress: 0 } : f));
+    try {
+      // Solicita o dispositivo Bluetooth novamente para garantir acesso ao GATT
+      // (pode ser necessário ajustar para usar o device já conectado, se possível)
+      // @ts-ignore
+      const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+        filters: [{ name: device.name }],
+        optionalServices: [SERVICE_UUID]
+      });
+      // @ts-ignore
+      const server = await bluetoothDevice.gatt.connect();
+      const service = await server.getPrimaryService(SERVICE_UUID);
+      const characteristic = await service.getCharacteristic(WRITE_CHAR_UUID);
 
-    const newFiles: FileTransfer[] = Array.from(selectedFiles).map((file, index) => ({
-      id: `file-${Date.now()}-${index}`,
-      name: file.name,
-      size: file.size,
-      progress: 0,
-      status: "pending",
-      deviceId: device.id,
-      deviceName: device.name,
-      direction: "send",
-      startTime: new Date(),
-    }))
-
-    setFiles((prev) => [...prev, ...newFiles])
-
-    newFiles.forEach((file) => {
-      simulateFileTransfer(file.id)
-    })
-  }
-
-  const simulateFileTransfer = (fileId: string) => {
-    setFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, status: "transferring" as const } : f)))
-
-    let progress = 0
-    const interval = setInterval(() => {
-      progress += Math.random() * 10 + 5
-
-      if (progress >= 100) {
-        progress = 100
-        const file = files.find((f) => f.id === fileId)
-        if (file) {
-          const historyEntry: TransferHistory = {
-            id: `hist-${Date.now()}`,
-            fileName: file.name,
-            fileSize: file.size,
-            deviceName: file.deviceName,
-            direction: file.direction,
-            status: "completed",
-            timestamp: new Date(),
-            duration: Math.floor((Date.now() - file.startTime.getTime()) / 1000),
-          }
-          setHistory((prev) => [historyEntry, ...prev])
-        }
-
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === fileId ? { ...f, progress: 100, status: "completed" as const, endTime: new Date() } : f,
-          ),
-        )
-        clearInterval(interval)
-      } else {
-        setFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, progress } : f)))
+      // Lê o arquivo em chunks
+      const fileBuffer = await file.arrayBuffer();
+      const totalChunks = Math.ceil(fileBuffer.byteLength / CHUNK_SIZE);
+      let sentBytes = 0;
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, fileBuffer.byteLength);
+        const chunk = fileBuffer.slice(start, end);
+        await characteristic.writeValue(new Uint8Array(chunk));
+        sentBytes = end;
+        setFiles((prev) => prev.map((f) =>
+          f.id === fileTransferId
+            ? { ...f, progress: Math.round((sentBytes / fileBuffer.byteLength) * 100) }
+            : f
+        ));
       }
-    }, 200)
-  }
+      setFiles((prev) => prev.map((f) => f.id === fileTransferId ? { ...f, progress: 100, status: "completed", endTime: new Date() } : f));
+      setHistory((prev) => [
+        {
+          id: `hist-${Date.now()}`,
+          fileName: file.name,
+          fileSize: file.size,
+          deviceName: device.name,
+          direction: "send",
+          status: "completed",
+          timestamp: new Date(),
+          duration: 0,
+        },
+        ...prev
+      ]);
+    } catch (err) {
+      setFiles((prev) => prev.map((f) => f.id === fileTransferId ? { ...f, status: "error" } : f));
+      setError("Erro ao transferir arquivo via Bluetooth: " + (err instanceof Error ? err.message : String(err)));
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = event.target.files;
+    if (!selectedFiles || !selectedDevice) return;
+
+    const device = devices.find((d) => d.id === selectedDevice);
+    if (!device) return;
+
+    Array.from(selectedFiles).forEach((file, index) => {
+      const fileTransferId = `file-${Date.now()}-${index}`;
+      const newFile: FileTransfer = {
+        id: fileTransferId,
+        name: file.name,
+        size: file.size,
+        progress: 0,
+        status: "pending",
+        deviceId: device.id,
+        deviceName: device.name,
+        direction: "send",
+        startTime: new Date(),
+      };
+      setFiles((prev) => [...prev, newFile]);
+      sendFileOverBluetooth(file, device, fileTransferId);
+    });
+  };
+
+
 
 const formatFileSize = (bytes: number) => {
   if (typeof window === "undefined") return ""
@@ -1441,6 +1612,14 @@ const formatTime = (seconds: number) => {
             >
               <Upload className="w-3 h-3 mr-1" />
               Selecionar Arquivos
+            </Button>
+            <Button
+              onClick={() => receiveFileOverBluetooth(device)}
+              size="sm"
+              className="w-full mt-2"
+              variant="outline"
+            >
+              <Download className="w-3 h-3 mr-1" /> Receber Arquivo
             </Button>
           </div>
         )
@@ -2209,6 +2388,18 @@ const formatTime = (seconds: number) => {
                               <span>{file.speed ? `${file.speed} KB/s` : ""}</span>
                             </div>
                           </div>
+                        )}
+                        {/* Botão de download para arquivos recebidos e concluídos */}
+                        {file.status === "completed" && file.direction === "receive" && file.downloadUrl && (
+                          <a
+                            href={file.downloadUrl}
+                            download={file.name}
+                            className="inline-flex items-center px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors border border-green-200 mt-2"
+                            title="Baixar arquivo recebido"
+                          >
+                            <Download className="w-4 h-4 mr-1" />
+                            Baixar
+                          </a>
                         )}
                       </div>
                     ))}

@@ -1,3 +1,4 @@
+
 "use client"
 const NOTIFY_CHAR_UUID = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
 
@@ -2381,6 +2382,9 @@ const formatTime = (seconds: number) => {
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-gray-900">Histórico de Transferências</h2>
               <Badge variant="secondary">{history.length} transferências</Badge>
+            </div>
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded mb-2 text-yellow-800 text-sm">
+              O histórico é temporário e será apagado automaticamente após 20 dias.
             </div>
 
             {history.length > 0 ? (

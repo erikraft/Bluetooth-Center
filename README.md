@@ -1,5 +1,5 @@
 
-# Bluetooth File Transfer Web App ![App icon](./public/favicon-32x32.png)
+# Bluetooth File Transfer Web App <img src="./public/favicon-32x32.png" align="right" width="100">
 
 This is a modern **Web Bluetooth application** that allows you to:
 

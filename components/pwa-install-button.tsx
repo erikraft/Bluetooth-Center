@@ -71,6 +71,10 @@ export default function PwaInstallButton() {
   // 1. beforeinstallprompt event fired (isVisible)
   // OR
   // 2. PWA is installed but user is not in standalone mode (show "Abrir App")
+  // NÃO mostrar botão dentro do PWA (standalone)
+  if (isStandalone) {
+    return null
+  }
   if (!isVisible && !(isInstalled && !isStandalone)) {
     return null
   }

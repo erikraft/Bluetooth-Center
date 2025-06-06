@@ -1,4 +1,4 @@
-# 蓝牙文件传输网页应用 ![应用图标](./public/favicon-32x32.png)
+# 蓝牙文件传输网页应用 <img src="./public/favicon-32x32.png" align="right" width="100">
 
 这是一个现代化的**Web 蓝牙**应用，支持：
 

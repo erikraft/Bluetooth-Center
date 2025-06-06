@@ -1,4 +1,4 @@
-# Aplicación Web para Transferencia de Archivos Bluetooth ![Icono de la app](./public/favicon-32x32.png)
+# Aplicación Web para Transferencia de Archivos Bluetooth <img src="./public/favicon-32x32.png" align="right" width="100">
 
 Esta es una aplicación moderna de **Bluetooth Web** que permite:
 

@@ -1,5 +1,6 @@
-# Application Web de Transfert de Fichiers Bluetooth ![Icône de l'app](./public/favicon-32x32.png)
-
+# Application Web de Transfert de Fichiers Bluetooth <img src="./public/favicon-32x32.png" align="right" width="100">
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/erikraft/Bluetooth-Center?utm_source=oss&utm_medium=github&utm_campaign=erikraft%2FBluetooth-Center&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+<br>
 Il s'agit d'une application **Web Bluetooth** moderne qui permet :
 
 - De connecter deux appareils Bluetooth via des services BLE personnalisés

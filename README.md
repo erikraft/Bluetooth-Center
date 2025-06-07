@@ -1,6 +1,7 @@
 
-# Bluetooth File Transfer Web App ![App icon](./public/favicon-32x32.png)
-
+# Bluetooth File Transfer Web App <img src="./public/favicon-32x32.png" align="right" width="100">
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/erikraft/Bluetooth-Center?utm_source=oss&utm_medium=github&utm_campaign=erikraft%2FBluetooth-Center&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+<br>
 This is a modern **Web Bluetooth application** that allows you to:
 
 - Connect two Bluetooth-enabled devices using custom Bluetooth Low Energy (BLE) services

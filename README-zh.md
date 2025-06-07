@@ -1,5 +1,6 @@
-# 蓝牙文件传输网页应用 ![应用图标](./public/favicon-32x32.png)
-
+# 蓝牙文件传输网页应用 <img src="./public/favicon-32x32.png" align="right" width="100">
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/erikraft/Bluetooth-Center?utm_source=oss&utm_medium=github&utm_campaign=erikraft%2FBluetooth-Center&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+<br>
 这是一个现代化的**Web 蓝牙**应用，支持：
 
 - 使用自定义 BLE 服务连接两个蓝牙设备

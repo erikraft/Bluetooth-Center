@@ -42,24 +42,27 @@ const NOTIFY_CHAR_UUID = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
           notifyChar.removeEventListener('characteristicvaluechanged', onNotification);
           notifyChar.stopNotifications();
           const fileBlob = new Blob(receivedChunks, { type: 'application/octet-stream' });
-          setFiles((prev: FileTransfer[]) => prev.map((f) => f.id === fileTransferId ? { ...f, status: 'completed', endTime: new Date() } : f));
-          setHistory((prev: TransferHistory[]) => [
-            {
-              id: `hist-${Date.now()}`,
-              fileName,
-              fileSize: expectedSize,
-              deviceName: device.name,
-              direction: 'receive',
-              status: 'completed',
-              timestamp: new Date(),
-              duration: Math.floor((Date.now() - startTime.getTime()) / 1000),
-            },
-            ...prev
-          ]);
-          setSuccess(`Arquivo recebido: ${fileName}`);
-          // Salva o blob para download
-          const url = URL.createObjectURL(fileBlob);
-          setFiles((prev: FileTransfer[]) => prev.map((f) => f.id === fileTransferId ? { ...f, downloadUrl: url } : f));
+          if (typeof window !== "undefined") {
+            const now = Date.now();
+            setFiles((prev: FileTransfer[]) => prev.map((f) => f.id === fileTransferId ? { ...f, status: 'completed', endTime: new Date(now) } : f));
+            setHistory((prev: TransferHistory[]) => [
+              {
+                id: `hist-${now}`,
+                fileName,
+                fileSize: expectedSize,
+                deviceName: device.name,
+                direction: 'receive',
+                status: 'completed',
+                timestamp: new Date(now),
+                duration: Math.floor((now - startTime.getTime()) / 1000),
+              },
+              ...prev
+            ]);
+            setSuccess(`Arquivo recebido: ${fileName}`);
+            // Salva o blob para download
+            const url = URL.createObjectURL(fileBlob);
+            setFiles((prev: FileTransfer[]) => prev.map((f) => f.id === fileTransferId ? { ...f, downloadUrl: url } : f));
+          }
         }
       };
 
@@ -83,8 +86,8 @@ const createNotificationHandler = (
   let receivedChunks: Uint8Array[] = [];
   let receivedBytes = 0;
   let expectedSize = 0;
-  let fileName = `arquivo-recebido-${Date.now()}`;
-  const startTime = new Date();
+  let fileName = typeof window !== "undefined" ? `arquivo-recebido-${Date.now()}` : "arquivo-recebido";
+  const startTime = typeof window !== "undefined" ? new Date() : new Date(0);
 
   const onNotification = (event: any) => {
     const value = event.target.value;
@@ -109,27 +112,28 @@ const createNotificationHandler = (
       )
     );
 
-    if (expectedSize > 0 && receivedBytes >= expectedSize) {
+    if (expectedSize > 0 && receivedBytes >= expectedSize && typeof window !== "undefined") {
       notifyChar.removeEventListener('characteristicvaluechanged', onNotification);
       notifyChar.stopNotifications();
       const fileBlob = new Blob(receivedChunks, { type: 'application/octet-stream' });
+      const now = Date.now();
       setFiles((prev) =>
         prev.map((f) =>
           f.id === fileTransferId
-            ? { ...f, status: 'completed', endTime: new Date(), downloadUrl: URL.createObjectURL(fileBlob) }
+            ? { ...f, status: 'completed', endTime: new Date(now), downloadUrl: URL.createObjectURL(fileBlob) }
             : f
         )
       );
       setHistory((prev) => [
         {
-          id: `hist-${Date.now()}`,
+          id: `hist-${now}`,
           fileName,
           fileSize: expectedSize,
           deviceName: device.name,
           direction: 'receive',
           status: 'completed',
-          timestamp: new Date(),
-          duration: Math.floor((Date.now() - startTime.getTime()) / 1000),
+          timestamp: new Date(now),
+          duration: Math.floor((now - startTime.getTime()) / 1000),
         },
         ...prev
       ]);
@@ -328,6 +332,18 @@ export default function BluetoothCenter() {
   // Garante renderização client-side para evitar hydration mismatch
   const [isClient, setIsClient] = useState(false);
   useEffect(() => { setIsClient(true); }, []);
+
+  // Estado para o nome do sistema operacional detectado
+  const [osName, setOsName] = useState("Desconhecido");
+  useEffect(() => {
+    if (typeof window !== "undefined" && typeof navigator !== "undefined") {
+      setOsName(
+        (navigator as any).userAgentData?.platform ||
+        navigator.platform ||
+        "Desconhecido"
+      );
+    }
+  }, []);
 
   // Desbloqueia os áudios no primeiro clique do usuário
   useEffect(() => {
@@ -701,59 +717,63 @@ export default function BluetoothCenter() {
     // Gamepad polling
     const gamepadInterval = setInterval(detectGamepads, 100)
 
+
     // Scan automático ao carregar a página (apenas se online)
     const autoScan = async () => {
+      if (typeof window === "undefined") return;
       // @ts-ignore
       if ((navigator as any).bluetooth && navigator.onLine) {
         try {
           // @ts-ignore
-          const availability = await (navigator as any).bluetooth.getAvailability()
+          const availability = await (navigator as any).bluetooth.getAvailability();
           if (availability) {
             // Tentar carregar dispositivos pareados automaticamente
             try {
               // @ts-ignore
-              const devices = await (navigator as any).bluetooth.getDevices()
+              const devices = await (navigator as any).bluetooth.getDevices();
               devices.forEach((device: any) => {
-                const deviceType = detectDeviceType(device.name || "")
+                const deviceType = detectDeviceType(device.name || "");
                 const newDevice: BluetoothDevice = {
                   id: device.id,
                   name: device.name || "Dispositivo Desconhecido",
                   connected: false,
                   type: deviceType,
                   signalStrength: Math.floor(Math.random() * 5) + 1,
-                  lastSeen: new Date(),
+                  lastSeen: null, // Corrigido para evitar hydration mismatch
                   paired: true,
                   services: ["basic_connection"],
                   capabilities: getDeviceCapabilities(deviceType),
-                }
+                };
 
                 setDevices((prev) => {
-                  const exists = prev.find((d) => d.id === newDevice.id)
-                  if (exists) return prev
-                  return [...prev, newDevice]
-                })
-              })
+                  const exists = prev.find((d) => d.id === newDevice.id);
+                  if (exists) return prev;
+                  return [...prev, newDevice];
+                });
+              });
 
               if (devices.length > 0) {
-                setSuccess(`${devices.length} dispositivo(s) pareado(s) carregado(s) automaticamente!`)
-                setTimeout(() => setSuccess(null), 3000)
+                setSuccess(`${devices.length} dispositivo(s) pareado(s) carregado(s) automaticamente!`);
+                setTimeout(() => setSuccess(null), 3000);
               }
             } catch (err) {
-              console.log("Não foi possível carregar dispositivos pareados automaticamente")
+              console.log("Não foi possível carregar dispositivos pareados automaticamente");
             }
           }
         } catch (err) {
-          console.log("Bluetooth não disponível para scan automático")
+          console.log("Bluetooth não disponível para scan automático");
         }
       } else if (!navigator.onLine) {
         // Se offline, mostrar mensagem informativa
-        setSuccess("Modo offline: Dispositivos salvos carregados do cache local")
-        setTimeout(() => setSuccess(null), 4000)
+        setSuccess("Modo offline: Dispositivos salvos carregados do cache local");
+        setTimeout(() => setSuccess(null), 4000);
       }
-    }
+    };
 
-    // Executar scan automático após 1 segundo
-    setTimeout(autoScan, 1000)
+    // Executar scan automático após 1 segundo (apenas no client)
+    if (typeof window !== "undefined") {
+      setTimeout(autoScan, 1000);
+    }
 
 
     // Disconnect all connected devices on page unload (NÃO limpa localStorage)
@@ -916,8 +936,8 @@ export default function BluetoothCenter() {
             name: device.name || "Dispositivo Desconhecido",
             connected: false,
             type: deviceType,
-            signalStrength: Math.floor(Math.random() * 5) + 1,
-            lastSeen: new Date(),
+            signalStrength: typeof window !== "undefined" ? Math.floor(Math.random() * 5) + 1 : 3,
+            lastSeen: typeof window !== "undefined" ? new Date() : new Date(0),
             paired: true, // Dispositivos já pareados
             services: ["basic_connection"],
             capabilities: getDeviceCapabilities(deviceType),
@@ -965,8 +985,8 @@ export default function BluetoothCenter() {
             name: device.name || "Dispositivo Desconhecido",
             connected: false,
             type: deviceType,
-            signalStrength: Math.floor(Math.random() * 5) + 1,
-            lastSeen: new Date(),
+            signalStrength: typeof window !== "undefined" ? Math.floor(Math.random() * 5) + 1 : 3,
+            lastSeen: typeof window !== "undefined" ? new Date() : new Date(0),
             paired: false,
             services: ["basic_connection"],
             capabilities: getDeviceCapabilities(deviceType),
@@ -1630,20 +1650,23 @@ export default function BluetoothCenter() {
             : f
         ));
       }
-      setFiles((prev: FileTransfer[]) => prev.map((f) => f.id === fileTransferId ? { ...f, progress: 100, status: "completed", endTime: new Date() } : f));
-      setHistory((prev: TransferHistory[]) => [
-        {
-          id: `hist-${Date.now()}`,
-          fileName: file.name,
-          fileSize: file.size,
-          deviceName: device.name,
-          direction: "send",
-          status: "completed",
-          timestamp: new Date(),
-          duration: 0,
-        },
-        ...prev
-      ]);
+      if (typeof window !== "undefined") {
+        const now = Date.now();
+        setFiles((prev: FileTransfer[]) => prev.map((f) => f.id === fileTransferId ? { ...f, progress: 100, status: "completed", endTime: new Date(now) } : f));
+        setHistory((prev: TransferHistory[]) => [
+          {
+            id: `hist-${now}`,
+            fileName: file.name,
+            fileSize: file.size,
+            deviceName: device.name,
+            direction: "send",
+            status: "completed",
+            timestamp: new Date(now),
+            duration: 0,
+          },
+          ...prev
+        ]);
+      }
     } catch (err) {
       setFiles((prev: FileTransfer[]) => prev.map((f) => f.id === fileTransferId ? { ...f, status: "error" } : f));
       setError("Erro ao transferir arquivo via Bluetooth: " + (err instanceof Error ? err.message : String(err)));
@@ -1659,7 +1682,9 @@ export default function BluetoothCenter() {
     if (!device) return;
 
     Array.from(selectedFiles).forEach((file, index) => {
-      const fileTransferId = `file-${Date.now()}-${index}`;
+      if (typeof window === "undefined") return;
+      const now = Date.now();
+      const fileTransferId = `file-${now}-${index}`;
       const newFile: FileTransfer = {
         id: fileTransferId,
         name: file.name,
@@ -1669,7 +1694,7 @@ export default function BluetoothCenter() {
         deviceId: device.id,
         deviceName: device.name,
         direction: "send",
-        startTime: new Date(),
+        startTime: new Date(now),
       };
       setFiles((prev: FileTransfer[]) => [...prev, newFile]);
       sendFileOverBluetooth(file, device, fileTransferId);
@@ -2962,7 +2987,7 @@ const parseInitialChunk = (
                               name: device.name || "Dispositivo Desconhecido",
                               connected: false,
                               type: deviceType,
-                              signalStrength: Math.floor(Math.random() * 5) + 1,
+                  signalStrength: typeof window !== "undefined" ? Math.floor(Math.random() * 5) + 1 : 3,
                               lastSeen: new Date(),
                               paired: false,
                               services: ["basic_connection"],
@@ -3465,7 +3490,7 @@ const parseInitialChunk = (
                         id="device-name"
                         value={deviceName}
                         onChange={(e) => setDeviceName(e.target.value)}
-                        placeholder="Nome que outros dispositivos verão"
+                        placeholder="Nome personalizado (visível no app)"
                         className="text-sm flex-1"
                       />
                       <Button onClick={() => {
@@ -3481,9 +3506,19 @@ const parseInitialChunk = (
                         Salvar
                       </Button>
                     </div>
-                    <p className="text-xs text-gray-500">
-                      Este nome será exibido para outros dispositivos quando eles procurarem por você
-                    </p>
+                    <div className="text-xs text-gray-500 space-y-1 mt-1">
+                      <div>
+                        <b>Nome do sistema operacional:</b> <span id="host-device-name">{isClient ? osName : "Desconhecido"}</span>
+                      </div>
+                      <div>
+                        <b>Nome personalizado:</b> <span id="custom-device-name">{deviceName}</span>
+                      </div>
+                      <div className="text-red-600">
+                        <b>Aviso:</b> Por limitações de segurança dos navegadores, <b>não é possível exibir o nome Bluetooth real do seu dispositivo</b> nesta página.<br/>
+                        O nome Bluetooth (aquele visto por outros dispositivos durante o pareamento) só pode ser alterado ou visualizado nas configurações do sistema operacional.<br/>
+                        O nome acima é apenas o nome do sistema operacional detectado, e o nome personalizado é usado apenas neste app.
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between">

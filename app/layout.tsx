@@ -63,7 +63,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" dir="ltr" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body suppressHydrationWarning className={inter.className}>
         {children}
 
         <script
@@ -113,13 +113,14 @@ export default function RootLayout({
                   document.head.appendChild(link);
                 });
 
-                let mode = 'browser';
-                if (navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) {
-                  mode = 'standalone';
-                } else if (window.matchMedia('(display-mode: fullscreen)').matches) {
-                  mode = 'fullscreen';
-                }
-                document.documentElement.setAttribute('data-display-mode', mode);
+                // Removido: alteração dinâmica de <html> baseada em APIs do navegador para evitar hydration mismatch
+                // let mode = 'browser';
+                // if (navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) {
+                //   mode = 'standalone';
+                // } else if (window.matchMedia('(display-mode: fullscreen)').matches) {
+                //   mode = 'fullscreen';
+                // }
+                // document.documentElement.setAttribute('data-display-mode', mode);
 
                 if ('caches' in window) {
                   caches.keys().then(keys => console.log('📦 Caches existentes:', keys));

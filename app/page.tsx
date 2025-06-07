@@ -1843,6 +1843,7 @@ const parseInitialChunk = (
               <Music className="w-4 h-4" />
               Player de Música
             </h4>
+
             {currentTrack ? (
               <div className="space-y-3">
                 <div className="text-center">
@@ -1870,10 +1871,175 @@ const parseInitialChunk = (
                   <Progress value={volume} className="flex-1" />
                   <span className="text-xs">{volume}%</span>
                 </div>
+                {/* Comandos Bluetooth reais para fones de ouvido */}
+                <div className="flex gap-2 mt-2">
+                  <Button size="sm" variant="secondary" className="flex-1" title="Anterior" onClick={async () => {
+                    try {
+                      // @ts-ignore
+                      const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+                        filters: [{ name: device.name }],
+                        optionalServices: ["0000183b-0000-1000-8000-00805f9b34fb"]
+                      });
+                      const server = await bluetoothDevice.gatt.connect();
+                      const service = await server.getPrimaryService("0000183b-0000-1000-8000-00805f9b34fb");
+                      const char = await service.getCharacteristic("00002b55-0000-1000-8000-00805f9b34fb");
+                      await char.writeValue(Uint8Array.of(0x47)); // Previous Track
+                      setSuccess("Comando de faixa anterior enviado!");
+                      setTimeout(() => setSuccess(null), 2000);
+                    } catch (e) {
+                      setError("Não foi possível enviar comando de faixa anterior: " + (e instanceof Error ? e.message : String(e)));
+                      setTimeout(() => setError(null), 4000);
+                    }
+                  }}>
+                    <SkipBack className="w-4 h-4 mr-1" />
+                    Anterior
+                  </Button>
+                  <Button size="sm" variant="secondary" className="flex-1" title="Play/Pause" onClick={async () => {
+                    try {
+                      // @ts-ignore
+                      const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+                        filters: [{ name: device.name }],
+                        optionalServices: ["0000183b-0000-1000-8000-00805f9b34fb"]
+                      });
+                      const server = await bluetoothDevice.gatt.connect();
+                      const service = await server.getPrimaryService("0000183b-0000-1000-8000-00805f9b34fb");
+                      const char = await service.getCharacteristic("00002b55-0000-1000-8000-00805f9b34fb");
+                      await char.writeValue(Uint8Array.of(0x46)); // Play/Pause
+                      setSuccess("Comando Play/Pause enviado!");
+                      setTimeout(() => setSuccess(null), 2000);
+                    } catch (e) {
+                      setError("Não foi possível enviar comando Play/Pause: " + (e instanceof Error ? e.message : String(e)));
+                      setTimeout(() => setError(null), 4000);
+                    }
+                  }}>
+                    {isPlaying ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
+                    Play/Pause
+                  </Button>
+                  <Button size="sm" variant="secondary" className="flex-1" title="Próxima" onClick={async () => {
+                    try {
+                      // @ts-ignore
+                      const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+                        filters: [{ name: device.name }],
+                        optionalServices: ["0000183b-0000-1000-8000-00805f9b34fb"]
+                      });
+                      const server = await bluetoothDevice.gatt.connect();
+                      const service = await server.getPrimaryService("0000183b-0000-1000-8000-00805f9b34fb");
+                      const char = await service.getCharacteristic("00002b55-0000-1000-8000-00805f9b34fb");
+                      await char.writeValue(Uint8Array.of(0x48)); // Next Track
+                      setSuccess("Comando de próxima faixa enviado!");
+                      setTimeout(() => setSuccess(null), 2000);
+                    } catch (e) {
+                      setError("Não foi possível enviar comando de próxima faixa: " + (e instanceof Error ? e.message : String(e)));
+                      setTimeout(() => setError(null), 4000);
+                    }
+                  }}>
+                    <SkipForward className="w-4 h-4 mr-1" />
+                    Próxima
+                  </Button>
+                  <Button size="sm" variant="secondary" className="flex-1" title="Aumentar Volume" onClick={async () => {
+                    try {
+                      // @ts-ignore
+                      const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+                        filters: [{ name: device.name }],
+                        optionalServices: ["0000183b-0000-1000-8000-00805f9b34fb"]
+                      });
+                      const server = await bluetoothDevice.gatt.connect();
+                      const service = await server.getPrimaryService("0000183b-0000-1000-8000-00805f9b34fb");
+                      const char = await service.getCharacteristic("00002b55-0000-1000-8000-00805f9b34fb");
+                      await char.writeValue(Uint8Array.of(0x43)); // Volume Up
+                      setSuccess("Comando de aumentar volume enviado!");
+                      setTimeout(() => setSuccess(null), 2000);
+                    } catch (e) {
+                      setError("Não foi possível enviar comando de aumentar volume: " + (e instanceof Error ? e.message : String(e)));
+                      setTimeout(() => setError(null), 4000);
+                    }
+                  }}>
+                    <Volume2 className="w-4 h-4 mr-1" />
+                    +
+                  </Button>
+                  <Button size="sm" variant="secondary" className="flex-1" title="Diminuir Volume" onClick={async () => {
+                    try {
+                      // @ts-ignore
+                      const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+                        filters: [{ name: device.name }],
+                        optionalServices: ["0000183b-0000-1000-8000-00805f9b34fb"]
+                      });
+                      const server = await bluetoothDevice.gatt.connect();
+                      const service = await server.getPrimaryService("0000183b-0000-1000-8000-00805f9b34fb");
+                      const char = await service.getCharacteristic("00002b55-0000-1000-8000-00805f9b34fb");
+                      await char.writeValue(Uint8Array.of(0x44)); // Volume Down
+                      setSuccess("Comando de diminuir volume enviado!");
+                      setTimeout(() => setSuccess(null), 2000);
+                    } catch (e) {
+                      setError("Não foi possível enviar comando de diminuir volume: " + (e instanceof Error ? e.message : String(e)));
+                      setTimeout(() => setError(null), 4000);
+                    }
+                  }}>
+                    <Volume1 className="w-4 h-4 mr-1" />
+                    -
+                  </Button>
+                </div>
               </div>
             ) : (
               <p className="text-sm text-gray-600">Nenhuma música selecionada</p>
             )}
+
+            {/* UUIDs Bluetooth para Fones de Ouvido */}
+            <div className="mt-4">
+              <h5 className="font-semibold text-xs text-purple-900 mb-1 flex items-center gap-1">
+                <span className="w-3 h-3 mr-1">🔑</span>
+                UUIDs Bluetooth para Fones de Ouvido
+              </h5>
+              <div className="overflow-x-auto">
+                <table className="text-xs bg-purple-100 rounded p-2 border border-purple-200 mb-2 w-full min-w-[420px]">
+                  <thead>
+                    <tr className="text-purple-900">
+                      <th className="text-left font-semibold p-1">Serviço</th>
+                      <th className="text-left font-semibold p-1">UUID</th>
+                      <th className="text-left font-semibold p-1">Descrição</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="p-1 font-medium">Audio Input Control Service</td>
+                      <td className="p-1">0000183C-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1">Controle de entrada de áudio (BLE audio)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-1 font-medium">Battery Service</td>
+                      <td className="p-1">0000180F-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1">Informações sobre bateria (nível, status)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-1 font-medium">Device Information Service</td>
+                      <td className="p-1">0000180A-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1">Info do dispositivo (modelo, fabricante, etc)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-1 font-medium">Generic Audio Service (GAS)</td>
+                      <td className="p-1">00001841-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1">Serviço genérico de áudio BLE (em desenvolvimento)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-1 font-medium">Media Control Service</td>
+                      <td className="p-1">0000183B-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1">Controle de mídia (play, pause, volume, etc)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-1 font-medium">Audio Stream Control Service (ASCS)</td>
+                      <td className="p-1">00001843-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1">Controle de streaming de áudio BLE</td>
+                    </tr>
+                    <tr>
+                      <td className="p-1 font-medium">Volume Control Service (VCS)</td>
+                      <td className="p-1">00001844-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1">Controle de volume via BLE</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-purple-900 mb-2">Estes UUIDs são usados para comunicação, controle de mídia e status de bateria em fones de ouvido Bluetooth modernos.</p>
+            </div>
           </div>
         )
       case "speaker":
@@ -1883,6 +2049,7 @@ const parseInitialChunk = (
               <Music className="w-4 h-4" />
               Reprodução de Áudio
             </h4>
+
             {currentTrack ? (
               <div className="space-y-3">
                 <div className="text-center">
@@ -1911,14 +2078,199 @@ const parseInitialChunk = (
                   <Progress value={volume} className="flex-1" />
                   <span className="text-xs">{volume}%</span>
                 </div>
+                {/* Comandos Bluetooth reais para caixas de som */}
+                <div className="flex gap-2 mt-2">
+                  <Button size="sm" variant="secondary" className="flex-1" title="Anterior" onClick={async () => {
+                    try {
+                      // @ts-ignore
+                      const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+                        filters: [{ name: device.name }],
+                        optionalServices: ["0000183b-0000-1000-8000-00805f9b34fb"]
+                      });
+                      const server = await bluetoothDevice.gatt.connect();
+                      const service = await server.getPrimaryService("0000183b-0000-1000-8000-00805f9b34fb");
+                      const char = await service.getCharacteristic("00002b55-0000-1000-8000-00805f9b34fb");
+                      await char.writeValue(Uint8Array.of(0x47)); // Previous Track
+                      setSuccess("Comando de faixa anterior enviado!");
+                      setTimeout(() => setSuccess(null), 2000);
+                    } catch (e) {
+                      setError("Não foi possível enviar comando de faixa anterior: " + (e instanceof Error ? e.message : String(e)));
+                      setTimeout(() => setError(null), 4000);
+                    }
+                  }}>
+                    <SkipBack className="w-4 h-4 mr-1" />
+                    Anterior
+                  </Button>
+                  <Button size="sm" variant="secondary" className="flex-1" title="Play/Pause" onClick={async () => {
+                    try {
+                      // @ts-ignore
+                      const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+                        filters: [{ name: device.name }],
+                        optionalServices: ["0000183b-0000-1000-8000-00805f9b34fb"]
+                      });
+                      const server = await bluetoothDevice.gatt.connect();
+                      const service = await server.getPrimaryService("0000183b-0000-1000-8000-00805f9b34fb");
+                      const char = await service.getCharacteristic("00002b55-0000-1000-8000-00805f9b34fb");
+                      await char.writeValue(Uint8Array.of(0x46)); // Play/Pause
+                      setSuccess("Comando Play/Pause enviado!");
+                      setTimeout(() => setSuccess(null), 2000);
+                    } catch (e) {
+                      setError("Não foi possível enviar comando Play/Pause: " + (e instanceof Error ? e.message : String(e)));
+                      setTimeout(() => setError(null), 4000);
+                    }
+                  }}>
+                    {isPlaying ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
+                    Play/Pause
+                  </Button>
+                  <Button size="sm" variant="secondary" className="flex-1" title="Próxima" onClick={async () => {
+                    try {
+                      // @ts-ignore
+                      const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+                        filters: [{ name: device.name }],
+                        optionalServices: ["0000183b-0000-1000-8000-00805f9b34fb"]
+                      });
+                      const server = await bluetoothDevice.gatt.connect();
+                      const service = await server.getPrimaryService("0000183b-0000-1000-8000-00805f9b34fb");
+                      const char = await service.getCharacteristic("00002b55-0000-1000-8000-00805f9b34fb");
+                      await char.writeValue(Uint8Array.of(0x48)); // Next Track
+                      setSuccess("Comando de próxima faixa enviado!");
+                      setTimeout(() => setSuccess(null), 2000);
+                    } catch (e) {
+                      setError("Não foi possível enviar comando de próxima faixa: " + (e instanceof Error ? e.message : String(e)));
+                      setTimeout(() => setError(null), 4000);
+                    }
+                  }}>
+                    <SkipForward className="w-4 h-4 mr-1" />
+                    Próxima
+                  </Button>
+                  <Button size="sm" variant="secondary" className="flex-1" title="Aumentar Volume" onClick={async () => {
+                    try {
+                      // @ts-ignore
+                      const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+                        filters: [{ name: device.name }],
+                        optionalServices: ["0000183b-0000-1000-8000-00805f9b34fb"]
+                      });
+                      const server = await bluetoothDevice.gatt.connect();
+                      const service = await server.getPrimaryService("0000183b-0000-1000-8000-00805f9b34fb");
+                      const char = await service.getCharacteristic("00002b55-0000-1000-8000-00805f9b34fb");
+                      await char.writeValue(Uint8Array.of(0x43)); // Volume Up
+                      setSuccess("Comando de aumentar volume enviado!");
+                      setTimeout(() => setSuccess(null), 2000);
+                    } catch (e) {
+                      setError("Não foi possível enviar comando de aumentar volume: " + (e instanceof Error ? e.message : String(e)));
+                      setTimeout(() => setError(null), 4000);
+                    }
+                  }}>
+                    <Volume2 className="w-4 h-4 mr-1" />
+                    +
+                  </Button>
+                  <Button size="sm" variant="secondary" className="flex-1" title="Diminuir Volume" onClick={async () => {
+                    try {
+                      // @ts-ignore
+                      const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+                        filters: [{ name: device.name }],
+                        optionalServices: ["0000183b-0000-1000-8000-00805f9b34fb"]
+                      });
+                      const server = await bluetoothDevice.gatt.connect();
+                      const service = await server.getPrimaryService("0000183b-0000-1000-8000-00805f9b34fb");
+                      const char = await service.getCharacteristic("00002b55-0000-1000-8000-00805f9b34fb");
+                      await char.writeValue(Uint8Array.of(0x44)); // Volume Down
+                      setSuccess("Comando de diminuir volume enviado!");
+                      setTimeout(() => setSuccess(null), 2000);
+                    } catch (e) {
+                      setError("Não foi possível enviar comando de diminuir volume: " + (e instanceof Error ? e.message : String(e)));
+                      setTimeout(() => setError(null), 4000);
+                    }
+                  }}>
+                    <Volume1 className="w-4 h-4 mr-1" />
+                    -
+                  </Button>
+                </div>
               </div>
             ) : (
               <p className="text-sm text-gray-600">Nenhuma música selecionada</p>
             )}
+
+            {/* UUIDs Bluetooth para Caixas de Som */}
+            <div className="mt-4">
+              <h5 className="font-semibold text-xs text-orange-900 mb-1 flex items-center gap-1">
+                <span className="w-3 h-3 mr-1">🔑</span>
+                UUIDs Bluetooth para Caixas de Som
+              </h5>
+              <div className="overflow-x-auto">
+                <table className="text-xs bg-orange-100 rounded p-2 border border-orange-200 mb-2 w-full min-w-[420px]">
+                  <thead>
+                    <tr className="text-orange-900">
+                      <th className="text-left font-semibold p-1">Serviço</th>
+                      <th className="text-left font-semibold p-1">UUID</th>
+                      <th className="text-left font-semibold p-1">Descrição</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="p-1 font-medium">Audio Input Control Service</td>
+                      <td className="p-1">0000183C-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1">Controle de entrada de áudio (BLE audio)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-1 font-medium">Battery Service</td>
+                      <td className="p-1">0000180F-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1">Informações sobre bateria (nível, status)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-1 font-medium">Device Information Service</td>
+                      <td className="p-1">0000180A-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1">Info do dispositivo (modelo, fabricante, etc)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-1 font-medium">Generic Audio Service (GAS)</td>
+                      <td className="p-1">00001841-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1">Serviço genérico de áudio BLE (em desenvolvimento)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-1 font-medium">Media Control Service</td>
+                      <td className="p-1">0000183B-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1">Controle de mídia (play, pause, volume, etc)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-1 font-medium">Audio Stream Control Service (ASCS)</td>
+                      <td className="p-1">00001843-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1">Controle de streaming de áudio BLE</td>
+                    </tr>
+                    <tr>
+                      <td className="p-1 font-medium">Volume Control Service (VCS)</td>
+                      <td className="p-1">00001844-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1">Controle de volume via BLE</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-orange-900 mb-2">Estes UUIDs são usados para comunicação, controle de mídia e status de bateria em caixas de som Bluetooth modernas.</p>
+            </div>
           </div>
         )
 
       case "watch":
+        // Função utilitária para ler o nível de bateria do smartwatch usando os UUIDs padrão
+        const readWatchBatteryLevel = async (deviceName: string) => {
+          try {
+            // @ts-ignore
+            const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+              filters: [{ name: deviceName }],
+              optionalServices: ["0000180f-0000-1000-8000-00805f9b34fb"] // Battery Service
+            });
+            const server = await bluetoothDevice.gatt.connect();
+            const service = await server.getPrimaryService("0000180f-0000-1000-8000-00805f9b34fb");
+            const characteristic = await service.getCharacteristic("00002a19-0000-1000-8000-00805f9b34fb");
+            const value = await characteristic.readValue();
+            const battery = value.getUint8(0);
+            setSuccess(`Nível de bateria: ${battery}%`);
+            setTimeout(() => setSuccess(null), 3000);
+          } catch (e) {
+            setError("Não foi possível ler o nível de bateria: " + (e instanceof Error ? e.message : String(e)));
+            setTimeout(() => setError(null), 4000);
+          }
+        };
         return (
           <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
             <h4 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
@@ -1941,6 +2293,10 @@ const parseInitialChunk = (
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-purple-500" />
                 <span>{typeof device.notifications === 'number' ? `${device.notifications} notif.` : 'Não disponível'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <BatteryFull className="w-4 h-4 text-green-500" />
+                <span>{typeof device.batteryLevel === 'number' ? `${device.batteryLevel}%` : 'Não disponível'}</span>
               </div>
             </div>
             <div className="mt-2 flex gap-1 flex-wrap">
@@ -2022,6 +2378,32 @@ const parseInitialChunk = (
                 Explorar Serviços BLE
 // Sugestão: Renderize o componente BleExplorer em algum lugar do seu layout principal, por exemplo, dentro do conteúdo principal ou em um modal.
               </Button>
+            </div>
+            {/* UUIDs de Bateria para Smartwatches */}
+            <div className="mt-4">
+              <h5 className="font-semibold text-xs text-green-900 mb-1 flex items-center gap-1">
+                <BatteryFull className="w-3 h-3 mr-1" />
+                UUIDs de Bateria Bluetooth para Smartwatches
+              </h5>
+              <div className="overflow-x-auto">
+                <table className="text-xs bg-green-100 rounded p-2 border border-green-200 mb-2 w-full min-w-[420px]">
+                  <thead>
+                    <tr className="text-green-900">
+                      <th className="text-left font-semibold p-1">Serviço (Service) UUID</th>
+                      <th className="text-left font-semibold p-1">Característica (Characteristic) UUID</th>
+                      <th className="text-left font-semibold p-1">Descrição</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="p-1 font-mono">0000180F-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1 font-mono">00002A19-0000-1000-8000-00805f9b34fb</td>
+                      <td className="p-1">Battery Service - Battery Level</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-green-900 mb-2">Estes UUIDs permitem ler o nível de bateria do relógio via Bluetooth.</p>
             </div>
           </div>
         )
@@ -2214,7 +2596,162 @@ const parseInitialChunk = (
                   </Button>
                 </div>
               </div>
-              {/* Espaço para futuros controles específicos de TV */}
+              <div>
+                <h5 className="font-semibold text-xs text-yellow-900 mb-1 flex items-center gap-1">
+                  <span className="w-3 h-3 mr-1">🔑</span>
+                  UUIDs Bluetooth para TV
+                </h5>
+                <ul className="text-xs bg-yellow-100 rounded p-2 border border-yellow-200 mb-2">
+                  <li><b>Generic Access:</b> 00001800-0000-1000-8000-00805f9b34fb</li>
+                  <li><b>Generic Attribute:</b> 00001801-0000-1000-8000-00805f9b34fb</li>
+                  <li><b>Device Information:</b> 0000180a-0000-1000-8000-00805f9b34fb</li>
+                  <li><b>AVRCP (Controle Remoto AV):</b> 0000110e-0000-1000-8000-00805f9b34fb</li>
+                  <li><b>A2DP (Áudio):</b> 0000110d-0000-1000-8000-00805f9b34fb</li>
+                  <li><b>HID (Controle Remoto):</b> 00001812-0000-1000-8000-00805f9b34fb</li>
+                  <li><b>Media Control Service (BLE):</b> 0000184e-0000-1000-8000-00805f9b34fb</li>
+                </ul>
+                <p className="text-xs text-yellow-900 mb-2">Estes UUIDs são usados para comunicação e controle de TVs via Bluetooth clássico e BLE.</p>
+                <Button
+                  onClick={() => {
+                    setSuccess("Modo Controle Remoto Bluetooth ativado! Use os botões abaixo.");
+                    setTimeout(() => setSuccess(null), 2000);
+                  }}
+                  size="sm"
+                  className="w-full mb-2"
+                  variant="outline"
+                >
+                  <span className="mr-1">🕹️</span>
+                  Controle Remoto Bluetooth
+                </Button>
+                <div className="flex gap-2 mb-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={async () => {
+                      try {
+                        // Tenta Media Control Service (BLE)
+                        // @ts-ignore
+                        const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+                          filters: [{ name: device.name }],
+                          optionalServices: ["0000184e-0000-1000-8000-00805f9b34fb", "0000110e-0000-1000-8000-00805f9b34fb"]
+                        });
+                        const server = await bluetoothDevice.gatt.connect();
+                        let service = null;
+                        try {
+                          service = await server.getPrimaryService("0000184e-0000-1000-8000-00805f9b34fb");
+                        } catch {}
+                        if (!service) {
+                          try {
+                            service = await server.getPrimaryService("0000110e-0000-1000-8000-00805f9b34fb");
+                          } catch {}
+                        }
+                        if (!service) throw new Error("Serviço de controle de mídia não encontrado na TV.");
+                        // Característica de controle de mídia (Media Control Point)
+                        let char = null;
+                        try {
+                          char = await service.getCharacteristic("00002b55-0000-1000-8000-00805f9b34fb"); // Media Control Point
+                        } catch {}
+                        if (!char) throw new Error("Característica de controle de mídia não encontrada.");
+                        // Comando: 0x43 = Volume Up (BLE Media Control Point)
+                        await char.writeValue(Uint8Array.of(0x43));
+                        setSuccess("Comando de aumentar volume enviado!");
+                        setTimeout(() => setSuccess(null), 2000);
+                      } catch (e) {
+                        setError("Não foi possível enviar comando de volume: " + (e instanceof Error ? e.message : String(e)));
+                        setTimeout(() => setError(null), 4000);
+                      }
+                    }}
+                  >
+                    <Volume2 className="w-4 h-4 mr-1" />
+                    Aumentar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={async () => {
+                      try {
+                        // Tenta Media Control Service (BLE)
+                        // @ts-ignore
+                        const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+                          filters: [{ name: device.name }],
+                          optionalServices: ["0000184e-0000-1000-8000-00805f9b34fb", "0000110e-0000-1000-8000-00805f9b34fb"]
+                        });
+                        const server = await bluetoothDevice.gatt.connect();
+                        let service = null;
+                        try {
+                          service = await server.getPrimaryService("0000184e-0000-1000-8000-00805f9b34fb");
+                        } catch {}
+                        if (!service) {
+                          try {
+                            service = await server.getPrimaryService("0000110e-0000-1000-8000-00805f9b34fb");
+                          } catch {}
+                        }
+                        if (!service) throw new Error("Serviço de controle de mídia não encontrado na TV.");
+                        // Característica de controle de mídia (Media Control Point)
+                        let char = null;
+                        try {
+                          char = await service.getCharacteristic("00002b55-0000-1000-8000-00805f9b34fb"); // Media Control Point
+                        } catch {}
+                        if (!char) throw new Error("Característica de controle de mídia não encontrada.");
+                        // Comando: 0x44 = Volume Down (BLE Media Control Point)
+                        await char.writeValue(Uint8Array.of(0x44));
+                        setSuccess("Comando de diminuir volume enviado!");
+                        setTimeout(() => setSuccess(null), 2000);
+                      } catch (e) {
+                        setError("Não foi possível enviar comando de volume: " + (e instanceof Error ? e.message : String(e)));
+                        setTimeout(() => setError(null), 4000);
+                      }
+                    }}
+                  >
+                    <Volume1 className="w-4 h-4 mr-1" />
+                    Diminuir
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={async () => {
+                      try {
+                        // Tenta Media Control Service (BLE)
+                        // @ts-ignore
+                        const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+                          filters: [{ name: device.name }],
+                          optionalServices: ["0000184e-0000-1000-8000-00805f9b34fb", "0000110e-0000-1000-8000-00805f9b34fb"]
+                        });
+                        const server = await bluetoothDevice.gatt.connect();
+                        let service = null;
+                        try {
+                          service = await server.getPrimaryService("0000184e-0000-1000-8000-00805f9b34fb");
+                        } catch {}
+                        if (!service) {
+                          try {
+                            service = await server.getPrimaryService("0000110e-0000-1000-8000-00805f9b34fb");
+                          } catch {}
+                        }
+                        if (!service) throw new Error("Serviço de controle de mídia não encontrado na TV.");
+                        // Característica de controle de mídia (Media Control Point)
+                        let char = null;
+                        try {
+                          char = await service.getCharacteristic("00002b55-0000-1000-8000-00805f9b34fb"); // Media Control Point
+                        } catch {}
+                        if (!char) throw new Error("Característica de controle de mídia não encontrada.");
+                        // Comando: 0x45 = Mute (BLE Media Control Point)
+                        await char.writeValue(Uint8Array.of(0x45));
+                        setSuccess("Comando de mudo enviado!");
+                        setTimeout(() => setSuccess(null), 2000);
+                      } catch (e) {
+                        setError("Não foi possível enviar comando de mudo: " + (e instanceof Error ? e.message : String(e)));
+                        setTimeout(() => setError(null), 4000);
+                      }
+                    }}
+                  >
+                    <VolumeX className="w-4 h-4 mr-1" />
+                    Mudo
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         )

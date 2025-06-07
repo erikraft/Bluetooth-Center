@@ -7,6 +7,9 @@ export default function PwaInstallButton() {
   const [isVisible, setIsVisible] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
   const [isStandalone, setIsStandalone] = useState(false)
+  // Garante renderização client-side para evitar hydration mismatch
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => { setIsClient(true); }, []);
 
   useEffect(() => {
     // Check if app is running in standalone mode
@@ -72,11 +75,11 @@ export default function PwaInstallButton() {
   // OR
   // 2. PWA is installed but user is not in standalone mode (show "Abrir App")
   // NÃO mostrar botão dentro do PWA (standalone)
-  if (isStandalone) {
-    return null
+  if (!isClient || isStandalone) {
+    return null;
   }
   if (!isVisible && !(isInstalled && !isStandalone)) {
-    return null
+    return null;
   }
 
   return (

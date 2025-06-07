@@ -1,5 +1,3 @@
-
-import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
@@ -43,7 +41,6 @@ export const metadata: Metadata = {
       },
     ],
   },
-  // Configurações específicas para PWA
   applicationName: "Bluetooth Center",
   keywords: ["bluetooth", "transferencia", "arquivos", "pwa", "offline"],
   authors: [{ name: "Bluetooth Center" }],
@@ -52,7 +49,6 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
-  // Meta tags específicas para mobile
   other: {
     "mobile-web-app-capable": "yes",
     "mobile-web-app-status-bar-style": "default",
@@ -66,149 +62,73 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
-      <head>
-        {/* Ícones básicos */}
-        <link rel="icon" href="/bluetooth-logo.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/bluetooth-logo.png" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/bluetooth-logo.png" />
-
-        {/* Apple Touch Icons */}
-        <link rel="apple-touch-icon" href="/bluetooth-logo.png" />
-        <link rel="apple-touch-icon" sizes="57x57" href="/bluetooth-logo.png" />
-        <link rel="apple-touch-icon" sizes="60x60" href="/bluetooth-logo.png" />
-        <link rel="apple-touch-icon" sizes="72x72" href="/bluetooth-logo.png" />
-        <link rel="apple-touch-icon" sizes="76x76" href="/bluetooth-logo.png" />
-        <link rel="apple-touch-icon" sizes="114x114" href="/bluetooth-logo.png" />
-        <link rel="apple-touch-icon" sizes="120x120" href="/bluetooth-logo.png" />
-        <link rel="apple-touch-icon" sizes="144x144" href="/bluetooth-logo.png" />
-        <link rel="apple-touch-icon" sizes="152x152" href="/bluetooth-logo.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/bluetooth-logo.png" />
-
-        {/* Manifest for PWA */}
-        <link rel="manifest" href="/manifest.json" />
-
-        {/* Meta tags para PWA - ESSENCIAIS para Chrome Mobile */}
-        <meta name="application-name" content="Bluetooth Center" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Bluetooth Center" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="msapplication-config" content="none" />
-        <meta name="msapplication-TileColor" content="#1e40af" />
-        <meta name="msapplication-TileImage" content="/bluetooth-logo.png" />
-        <meta name="theme-color" content="#1e40af" />
-
-        {/* Preconnect para melhor performance */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+    <html lang="pt-BR" dir="ltr" suppressHydrationWarning>
+      <body className={inter.className}>
+        {children}
 
         <script
           dangerouslySetInnerHTML={{
             __html: `
-// Registrar Service Worker IMEDIATAMENTE para PWA
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('/sw.js', {
-      scope: '/',
-      updateViaCache: 'none'
-    })
-      .then(function(registration) {
-        console.log('SW registered successfully:', registration.scope);
-        
-        // Verificar se há atualizações
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                console.log('Nova versão do app disponível!');
-                if (confirm('Nova versão disponível! Atualizar agora?')) {
-                  window.location.reload();
+              (() => {
+                if ('serviceWorker' in navigator) {
+                  window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js', {
+                      scope: '/',
+                      updateViaCache: 'none'
+                    }).then(registration => {
+                      console.log('✅ Service Worker registrado:', registration.scope);
+                      registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker?.addEventListener('statechange', () => {
+                          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            if (confirm('Nova versão disponível! Atualizar agora?')) {
+                              window.location.reload();
+                            }
+                          }
+                        });
+                      });
+                    }).catch(err => console.warn('❌ Falha ao registrar o Service Worker:', err));
+                  });
+
+                  window.addEventListener('online', () => {
+                    console.log('🟢 Online');
+                    if ('sync' in ServiceWorkerRegistration.prototype) {
+                      navigator.serviceWorker.ready
+                        .then(reg => reg.sync.register('background-sync'))
+                        .catch(err => console.warn('Erro ao registrar background-sync:', err));
+                    }
+                  });
+
+                  window.addEventListener('offline', () => {
+                    console.log('🔴 Offline');
+                  });
                 }
-              }
-            });
-          }
-        });
-        
-      })
-      .catch(function(registrationError) {
-        console.log('SW registration failed:', registrationError);
-      });
-  });
 
-  // Detectar quando o app volta online
-  window.addEventListener('online', function() {
-    console.log('App voltou online');
-    if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
-      navigator.serviceWorker.ready.then(registration => {
-        return registration.sync.register('background-sync');
-      }).catch(err => console.log('Sync registration failed:', err));
-    }
-  });
-  
-  // Detectar quando fica offline
-  window.addEventListener('offline', function() {
-    console.log('App ficou offline - Modo offline ativo');
-  });
-} else {
-  console.log('Service Worker não suportado');
-}
+                const preloadResources = ['/bluetooth-logo.png', '/connected.mp3'];
+                preloadResources.forEach(resource => {
+                  const link = document.createElement('link');
+                  link.rel = 'preload';
+                  link.href = resource;
+                  link.as = resource.endsWith('.mp3') ? 'audio' : 'image';
+                  document.head.appendChild(link);
+                });
 
-// Preload de recursos críticos
-const preloadResources = [
-  '/bluetooth-logo.png',
-  '/connected.mp3'
-];
+                let mode = 'browser';
+                if (navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) {
+                  mode = 'standalone';
+                } else if (window.matchMedia('(display-mode: fullscreen)').matches) {
+                  mode = 'fullscreen';
+                }
+                document.documentElement.setAttribute('data-display-mode', mode);
 
-preloadResources.forEach(resource => {
-  const link = document.createElement('link');
-  link.rel = 'preload';
-  link.href = resource;
-  if (resource.endsWith('.mp3')) {
-    link.as = 'audio';
-  } else if (resource.endsWith('.png')) {
-    link.as = 'image';
-  }
-  document.head.appendChild(link);
-});
-
-// Detectar se é PWA instalada - MELHORADO
-let displayMode = 'browser';
-const mqStandalone = '(display-mode: standalone)';
-const mqFullscreen = '(display-mode: fullscreen)';
-
-if (navigator.standalone || window.matchMedia(mqStandalone).matches) {
-  displayMode = 'standalone';
-} else if (window.matchMedia(mqFullscreen).matches) {
-  displayMode = 'fullscreen';
-}
-
-console.log('Display mode:', displayMode);
-document.documentElement.setAttribute('data-display-mode', displayMode);
-
-// Forçar atualização do cache para PWA
-if ('caches' in window) {
-  caches.keys().then(names => {
-    console.log('Cache names:', names);
-  });
-}
-`,
+                if ('caches' in window) {
+                  caches.keys().then(keys => console.log('📦 Caches existentes:', keys));
+                }
+              })();
+            `,
           }}
         />
-      </head>
-<body className={inter.className}>
-  {/* Removido ThemeProvider e ThemeSwitcher para desativar temas */}
-  {children}
-  <script
-    dangerouslySetInnerHTML={{
-      __html: `
-        // This script is already in layout.tsx for service worker registration and other logic
-      `,
-    }}
-  />
-  <div id="pwa-install-button-root"></div>
-</body>
+      </body>
     </html>
   )
 }

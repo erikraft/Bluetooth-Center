@@ -1,7 +1,6 @@
-
 "use client"
-const NOTIFY_CHAR_UUID = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
 
+const NOTIFY_CHAR_UUID = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
   // Recepção real de arquivo via BLE
   const receiveFileOverBluetooth = async (device: BluetoothDevice) => {
     setSuccess('Aguardando envio do arquivo via Bluetooth...');
@@ -17,29 +16,6 @@ const NOTIFY_CHAR_UUID = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
       const server = await bluetoothDevice.gatt.connect();
       const service = await server.getPrimaryService(SERVICE_UUID);
       const notifyChar = await service.getCharacteristic(NOTIFY_CHAR_UUID);
-
-      let receivedChunks: Uint8Array[] = [];
-      let receivedBytes = 0;
-      let expectedSize = 0;
-      let fileName = `arquivo-recebido-${Date.now()}`;
-      let fileTransferId = `recv-${Date.now()}`;
-      let startTime = new Date();
-
-      // Adiciona entrada na lista de transferências
-      setFiles((prev: FileTransfer[]) => [
-        ...prev,
-        {
-          id: fileTransferId,
-          name: fileName,
-          size: 0,
-          progress: 0,
-          status: 'transferring',
-          deviceId: device.id,
-          deviceName: device.name,
-          direction: 'receive',
-          startTime,
-        },
-      ]);
 
       // Handler para cada notificação recebida
       const onNotification = (event: any) => {
@@ -94,6 +70,75 @@ const NOTIFY_CHAR_UUID = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
       setTimeout(() => setError(null), 5000);
     }
   };
+
+  // Função auxiliar para criar um manipulador de notificações BLE
+const createNotificationHandler = (
+  notifyChar: BluetoothRemoteGATTCharacteristic,
+  fileTransferId: string,
+  setFiles: React.Dispatch<React.SetStateAction<FileTransfer[]>>,
+  setHistory: React.Dispatch<React.SetStateAction<TransferHistory[]>>,
+  setSuccess: (message: string) => void,
+  device: BluetoothDevice
+) => {
+  let receivedChunks: Uint8Array[] = [];
+  let receivedBytes = 0;
+  let expectedSize = 0;
+  let fileName = `arquivo-recebido-${Date.now()}`;
+  const startTime = new Date();
+
+  const onNotification = (event: any) => {
+    const value = event.target.value;
+    const chunk = new Uint8Array(value.buffer);
+
+    if (receivedBytes === 0) {
+      const parsed = parseInitialChunk(chunk, fileTransferId, setFiles);
+      expectedSize = parsed.expectedSize;
+      fileName = parsed.fileName;
+      receivedChunks.push(parsed.remainingChunk);
+      receivedBytes += parsed.remainingChunk.length;
+    } else {
+      receivedChunks.push(chunk);
+      receivedBytes += chunk.length;
+    }
+
+    setFiles((prev) =>
+      prev.map((f) =>
+        f.id === fileTransferId
+          ? { ...f, progress: Math.round((receivedBytes / (expectedSize || 1)) * 100) }
+          : f
+      )
+    );
+
+    if (expectedSize > 0 && receivedBytes >= expectedSize) {
+      notifyChar.removeEventListener('characteristicvaluechanged', onNotification);
+      notifyChar.stopNotifications();
+      const fileBlob = new Blob(receivedChunks, { type: 'application/octet-stream' });
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === fileTransferId
+            ? { ...f, status: 'completed', endTime: new Date(), downloadUrl: URL.createObjectURL(fileBlob) }
+            : f
+        )
+      );
+      setHistory((prev) => [
+        {
+          id: `hist-${Date.now()}`,
+          fileName,
+          fileSize: expectedSize,
+          deviceName: device.name,
+          direction: 'receive',
+          status: 'completed',
+          timestamp: new Date(),
+          duration: Math.floor((Date.now() - startTime.getTime()) / 1000),
+        },
+        ...prev
+      ]);
+      setSuccess(`Arquivo recebido: ${fileName}`);
+    }
+  };
+
+  return onNotification;
+};
 
   // Handler para notificações BLE, tipado para evitar erro 'never'
   const onNotification = (event: Event) => {
@@ -173,7 +218,9 @@ Tv,
   Shield,
   Globe,
 } from "lucide-react"
+
 import { SnakeGame } from "@/components/snake-game"
+import BleExplorer from "../ble-explorer"
 
 interface BluetoothDevice {
   id: string
@@ -278,6 +325,42 @@ function updateInstallStatus(setIsInstalled: (v: boolean) => void) {
 }
 
 export default function BluetoothCenter() {
+  // Garante renderização client-side para evitar hydration mismatch
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => { setIsClient(true); }, []);
+
+  // Desbloqueia os áudios no primeiro clique do usuário
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const unlockAudio = () => {
+      try {
+        if (audioRef.current) {
+          audioRef.current.volume = 0;
+          audioRef.current.play().catch(() => {});
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+          audioRef.current.volume = 1;
+        }
+        if (audioRefDisconnected.current) {
+          audioRefDisconnected.current.volume = 0;
+          audioRefDisconnected.current.play().catch(() => {});
+          audioRefDisconnected.current.pause();
+          audioRefDisconnected.current.currentTime = 0;
+          audioRefDisconnected.current.volume = 1;
+        }
+        if (audioRefWaiting.current) {
+          audioRefWaiting.current.volume = 0;
+          audioRefWaiting.current.play().catch(() => {});
+          audioRefWaiting.current.pause();
+          audioRefWaiting.current.currentTime = 0;
+          audioRefWaiting.current.volume = 1;
+        }
+      } catch {}
+      document.removeEventListener('click', unlockAudio);
+    };
+    document.addEventListener('click', unlockAudio, { once: true });
+    return () => document.removeEventListener('click', unlockAudio);
+  }, []);
   const [isOnline, setIsOnline] = useState(true)
   const [bluetoothSupported, setBluetoothSupported] = useState(true)
   const [bluetoothEnabled, setBluetoothEnabled] = useState(true)
@@ -314,6 +397,38 @@ export default function BluetoothCenter() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isInstallable, setIsInstallable] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
+  const [isStandalone, setIsStandalone] = useState(false)
+  // Detecta se está rodando como PWA (standalone)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const checkStandalone = () => {
+        const standalone =
+          window.matchMedia("(display-mode: standalone)").matches ||
+          window.matchMedia("(display-mode: minimal-ui)").matches ||
+          window.matchMedia("(display-mode: fullscreen)").matches ||
+          (window.navigator as any).standalone === true ||
+          document.referrer.includes("android-app://");
+        setIsStandalone(standalone);
+      };
+      checkStandalone();
+      window.addEventListener("resize", checkStandalone);
+      window.addEventListener("orientationchange", checkStandalone);
+      // Também escuta mudanças de display-mode
+      const mqlStandalone = window.matchMedia("(display-mode: standalone)");
+      const mqlMinimal = window.matchMedia("(display-mode: minimal-ui)");
+      const mqlFullscreen = window.matchMedia("(display-mode: fullscreen)");
+      mqlStandalone.addEventListener("change", checkStandalone);
+      mqlMinimal.addEventListener("change", checkStandalone);
+      mqlFullscreen.addEventListener("change", checkStandalone);
+      return () => {
+        window.removeEventListener("resize", checkStandalone);
+        window.removeEventListener("orientationchange", checkStandalone);
+        mqlStandalone.removeEventListener("change", checkStandalone);
+        mqlMinimal.removeEventListener("change", checkStandalone);
+        mqlFullscreen.removeEventListener("change", checkStandalone);
+      };
+    }
+  }, []);
 
   // Music Player State
   const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null)
@@ -640,9 +755,9 @@ export default function BluetoothCenter() {
     // Executar scan automático após 1 segundo
     setTimeout(autoScan, 1000)
 
-    // Disconnect all connected devices on page unload
+
+    // Disconnect all connected devices on page unload (NÃO limpa localStorage)
     const handleBeforeUnload = () => {
-      // Disconnect devices
       devices.forEach((device) => {
         if (device.connected) {
           try {
@@ -652,29 +767,18 @@ export default function BluetoothCenter() {
           }
         }
       })
-
-      // Do NOT update React state here to avoid client-side exceptions on unload
-      // setDevices([])
-      // setDeviceCache([])
-
-      // Clear localStorage cache to avoid stale state
-      try {
-        localStorage.removeItem("bluetoothDeviceCache")
-        localStorage.removeItem("customDeviceNames")
-      } catch (error) {
-        console.error("Erro ao limpar cache no unload:", error)
-      }
+      // Não limpar localStorage aqui!
     }
 
     if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
       window.addEventListener("beforeunload", handleBeforeUnload as any)
     }
 
-    // Add pagehide event for better unload handling
+    // Add pagehide event for better unload handling (NÃO limpa localStorage)
     const handlePageHide = () => {
-      // Clear React state safely on page hide
       setDevices([])
       setDeviceCache([])
+      // Não limpar localStorage aqui!
     }
 
     if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
@@ -979,14 +1083,17 @@ export default function BluetoothCenter() {
       return
     }
 
+
     try {
       let wasJustPaired = false
       let batteryLevel: number | undefined = undefined
       let heartRate: number | undefined = undefined
-      // Adicione outros dados de saúde aqui se necessário
+      let steps: number | undefined = undefined
+      let calories: number | undefined = undefined
+      let notifications: number | undefined = undefined
+      let signalStrength: number = 0;
 
       // Função para ler nível de bateria
-      // @ts-ignore: BluetoothRemoteGATTServer pode não estar no escopo global do TS
       const readBatteryLevel = async (gatt: any) => {
         try {
           const service = await gatt.getPrimaryService("battery_service")
@@ -999,17 +1106,257 @@ export default function BluetoothCenter() {
       }
 
       // Função para ler batimentos cardíacos
-      // @ts-ignore: BluetoothRemoteGATTServer pode não estar no escopo global do TS
       const readHeartRate = async (gatt: any) => {
+        // 1. Tenta padrão BLE
         try {
-          const service = await gatt.getPrimaryService("heart_rate")
-          const characteristic = await service.getCharacteristic("heart_rate_measurement")
-          const value = await characteristic.readValue()
-          // O valor do heart rate está no segundo byte
-          return value.getUint8(1)
-        } catch {
-          return undefined
+          const service = await gatt.getPrimaryService("heart_rate").catch(() => null);
+          if (service) {
+            // 1a. Tenta characteristic padrão
+            try {
+              const char = await service.getCharacteristic("heart_rate_measurement");
+              // Alguns dispositivos exigem ativar notificações
+              try { await char.startNotifications(); } catch {}
+              // Alguns exigem comando de start na characteristic de controle
+              try {
+                const ctrl = await service.getCharacteristic("heart_rate_control_point");
+                // Comando para iniciar medição contínua (BLE padrão)
+                await ctrl.writeValue(Uint8Array.of(1));
+              } catch {}
+              // Lê valor atual
+              const value = await char.readValue();
+              // O valor do heart rate está no segundo byte (padrão BLE)
+              return value.getUint8(1);
+            } catch {}
+          }
+        } catch {}
+        // 2. Xiaomi/Realme/Oppo: FEE0/FEE1/FF07/FF06
+        const proprietaryServices = [
+          "0000fee0-0000-1000-8000-00805f9b34fb",
+          "0000fee1-0000-1000-8000-00805f9b34fb",
+          "0000ff07-0000-1000-8000-00805f9b34fb",
+          "0000ff06-0000-1000-8000-00805f9b34fb"
+        ];
+        for (const uuid of proprietaryServices) {
+          try {
+            const service = await gatt.getPrimaryService(uuid).catch(() => null);
+            if (service) {
+              // Mi Band: characteristic de batimento pode ser 00002a37... ou custom
+              const possibleChars = [
+                "00002a37-0000-1000-8000-00805f9b34fb", // Heart Rate Measurement
+                "0000ff06-0000-1000-8000-00805f9b34fb", // Notify/Alert
+                "0000ff07-0000-1000-8000-00805f9b34fb"
+              ];
+              for (const charUuid of possibleChars) {
+                try {
+                  const char = await service.getCharacteristic(charUuid);
+                  // Alguns modelos exigem ativar notificações
+                  try { await char.startNotifications(); } catch {}
+                  // Alguns exigem comando de start em characteristic de controle
+                  try {
+                    const ctrl = await service.getCharacteristic("00002a39-0000-1000-8000-00805f9b34fb");
+                    // Comando para iniciar medição contínua (Mi Band)
+                    await ctrl.writeValue(Uint8Array.of(0x15, 0x01, 0x01));
+                  } catch {}
+                  // Lê valor
+                  const value = await char.readValue();
+                  // Mi Band: geralmente no segundo byte, mas pode variar
+                  if (value.byteLength >= 2) return value.getUint8(1);
+                  if (value.byteLength >= 1) return value.getUint8(0);
+                } catch {}
+              }
+            }
+          } catch {}
         }
+        return undefined;
+      }
+
+      // Função para ler passos (usando serviço fitness_machine ou custom)
+      const readSteps = async (gatt: any) => {
+        // 1. Serviços padrão BLE
+        try {
+          // fitness_machine
+          const service = await gatt.getPrimaryService("fitness_machine").catch(() => null);
+          if (service) {
+            let char = null;
+            try { char = await service.getCharacteristic("00002AC4-0000-1000-8000-00805f9b34fb"); } catch {}
+            if (!char) try { char = await service.getCharacteristic("step_count"); } catch {}
+            if (!char) try { char = await service.getCharacteristic("steps"); } catch {}
+            if (char) {
+              const value = await char.readValue();
+              return value.getUint32 ? value.getUint32(0, true) : value.getUint16(0, true);
+            }
+          }
+        } catch {}
+        // 2. Cycling Speed and Cadence (pode conter passos)
+        try {
+          const service = await gatt.getPrimaryService("00001816-0000-1000-8000-00805f9b34fb").catch(() => null);
+          if (service) {
+            let char = null;
+            try { char = await service.getCharacteristic("00002A5B-0000-1000-8000-00805f9b34fb"); } catch {}
+            if (char) {
+              const value = await char.readValue();
+              return value.getUint32 ? value.getUint32(0, true) : value.getUint16(0, true);
+            }
+          }
+        } catch {}
+        // 3. Xiaomi/Realme/Oppo/Huawei: Serviços proprietários
+        // Mi Band/Amazfit: FEE0, FEE1, FF07, FF06, FF04
+        const proprietaryServices = [
+          "0000fee0-0000-1000-8000-00805f9b34fb", // Xiaomi/Realme/Oppo
+          "0000fee1-0000-1000-8000-00805f9b34fb",
+          "0000fee9-0000-1000-8000-00805f9b34fb", // Huawei
+          "0000ff07-0000-1000-8000-00805f9b34fb",
+          "0000ff06-0000-1000-8000-00805f9b34fb",
+          "0000ff04-0000-1000-8000-00805f9b34fb"
+        ];
+        for (const uuid of proprietaryServices) {
+          try {
+            const service = await gatt.getPrimaryService(uuid).catch(() => null);
+            if (service) {
+              // Características conhecidas de passos
+              const possibleChars = [
+                "00000007-0000-3512-2118-0009af100700", // Mi Band 3/4 Activity Data
+                "0000ff07-0000-1000-8000-00805f9b34fb", // Activity Data
+                "0000ff06-0000-1000-8000-00805f9b34fb", // Notify/Alert
+                "0000ff04-0000-1000-8000-00805f9b34fb", // User Info/Settings
+                "00002a53-0000-1000-8000-00805f9b34fb", // Step Count (alguns)
+                "00002a5b-0000-1000-8000-00805f9b34fb"
+              ];
+              for (const charUuid of possibleChars) {
+                try {
+                  const char = await service.getCharacteristic(charUuid);
+                  if (char) {
+                    const value = await char.readValue();
+                    // Tenta extrair passos (pode variar por modelo)
+                    if (value.byteLength >= 4) return value.getUint32(0, true);
+                    if (value.byteLength >= 2) return value.getUint16(0, true);
+                  }
+                } catch {}
+              }
+            }
+          } catch {}
+        }
+        return undefined;
+      }
+
+      // Função para ler calorias (usando serviço fitness_machine ou custom)
+      const readCalories = async (gatt: any) => {
+        // 1. Serviço padrão fitness_machine
+        try {
+          const service = await gatt.getPrimaryService("fitness_machine").catch(() => null);
+          if (service) {
+            let char = null;
+            try { char = await service.getCharacteristic("calories"); } catch {}
+            try { if (!char) char = await service.getCharacteristic("00002A99-0000-1000-8000-00805f9b34fb"); } catch {}
+            if (char) {
+              const value = await char.readValue();
+              return value.getUint16(0, true);
+            }
+          }
+        } catch {}
+        // 2. Serviços proprietários (Xiaomi, Huawei, etc)
+        const proprietaryServices = [
+          "0000fee0-0000-1000-8000-00805f9b34fb",
+          "0000fee1-0000-1000-8000-00805f9b34fb",
+          "0000fee9-0000-1000-8000-00805f9b34fb",
+          "0000ff07-0000-1000-8000-00805f9b34fb",
+          "0000ff06-0000-1000-8000-00805f9b34fb",
+          "0000ff04-0000-1000-8000-00805f9b34fb"
+        ];
+        for (const uuid of proprietaryServices) {
+          try {
+            const service = await gatt.getPrimaryService(uuid).catch(() => null);
+            if (service) {
+              // Características conhecidas de calorias
+              const possibleChars = [
+                "00002a99-0000-1000-8000-00805f9b34fb", // BLE padrão
+                "0000ff07-0000-1000-8000-00805f9b34fb",
+                "0000ff06-0000-1000-8000-00805f9b34fb"
+              ];
+              for (const charUuid of possibleChars) {
+                try {
+                  const char = await service.getCharacteristic(charUuid);
+                  if (char) {
+                    const value = await char.readValue();
+                    if (value.byteLength >= 2) return value.getUint16(0, true);
+                  }
+                } catch {}
+              }
+            }
+          } catch {}
+        }
+        return undefined;
+      }
+
+      // Função para ler notificações (alguns relógios expõem isso)
+      const readNotifications = async (gatt: any) => {
+        // 1. Serviço padrão alert_notification
+        try {
+          const service = await gatt.getPrimaryService("alert_notification").catch(() => null);
+          if (service) {
+            let char = null;
+            try { char = await service.getCharacteristic("new_alert"); } catch {}
+            try { if (!char) char = await service.getCharacteristic("00002A46-0000-1000-8000-00805f9b34fb"); } catch {}
+            if (char) {
+              const value = await char.readValue();
+              return value.getUint8(0);
+            }
+          }
+        } catch {}
+        // 2. Serviços proprietários (Xiaomi, Realme, etc)
+        const proprietaryServices = [
+          "0000fee0-0000-1000-8000-00805f9b34fb",
+          "0000fee1-0000-1000-8000-00805f9b34fb",
+          "0000fee9-0000-1000-8000-00805f9b34fb",
+          "0000ff06-0000-1000-8000-00805f9b34fb",
+          "0000ff07-0000-1000-8000-00805f9b34fb"
+        ];
+        for (const uuid of proprietaryServices) {
+          try {
+            const service = await gatt.getPrimaryService(uuid).catch(() => null);
+            if (service) {
+              // Características conhecidas de notificações
+              const possibleChars = [
+                "0000ff06-0000-1000-8000-00805f9b34fb", // Notify/Alert
+                "0000ff07-0000-1000-8000-00805f9b34fb",
+                "00002a46-0000-1000-8000-00805f9b34fb"
+              ];
+              for (const charUuid of possibleChars) {
+                try {
+                  const char = await service.getCharacteristic(charUuid);
+                  if (char) {
+                    const value = await char.readValue();
+                    if (value.byteLength >= 1) return value.getUint8(0);
+                  }
+                } catch {}
+              }
+            }
+          } catch {}
+        }
+        return undefined;
+      }
+
+      // Função para ler RSSI real (se disponível)
+      const readSignalStrength = async (bluetoothDevice: any) => {
+        // Web Bluetooth não expõe RSSI diretamente, mas alguns dispositivos expõem via characteristic
+        // Exemplo: characteristic "rssi" ou "signal_strength" em algum serviço customizado
+        try {
+          if (bluetoothDevice.gatt) {
+            // Tenta serviço customizado
+            const services = await bluetoothDevice.gatt.getPrimaryServices();
+            for (const service of services) {
+              let char = null;
+              try { char = await service.getCharacteristic("rssi"); } catch {}
+              try { if (!char) char = await service.getCharacteristic("signal_strength"); } catch {}
+              if (char) {
+                const value = await char.readValue();
+                return value.getInt8(0); // RSSI geralmente é int8
+              }
+            }
+          }
+        } catch {}
+        // Se não conseguir, retorna 0
+        return 0;
       }
 
       // Se o dispositivo já está pareado, tentar conectar diretamente
@@ -1029,22 +1376,34 @@ export default function BluetoothCenter() {
               "0000180a-0000-1000-8000-00805f9b34fb", // Device Information Service
               "0000180d-0000-1000-8000-00805f9b34fb", // Heart Rate Service
               "00001812-0000-1000-8000-00805f9b34fb", // Human Interface Device
+              "alert_notification",
+              "00001816-0000-1000-8000-00805f9b34fb", // Cycling Speed and Cadence
             ],
           });
           const server = await bluetoothDevice.gatt.connect();
-          let batteryLevel = undefined;
-          let heartRate = undefined;
-          try {
-            batteryLevel = await readBatteryLevel(server);
-          } catch {}
-          try {
-            if (device.type === "watch") {
-              heartRate = await readHeartRate(server);
-            }
-          } catch {}
-          setDevices((prev) => prev.map((d) => (d.id === deviceId ? { ...d, connected: true, paired: true, lastSeen: new Date(), batteryLevel, ...(device.type === "watch" && heartRate !== undefined ? { heartRate } : {}) } : d)));
+          batteryLevel = await readBatteryLevel(server);
+          if (device.type === "watch") {
+            heartRate = await readHeartRate(server);
+            steps = await readSteps(server);
+            calories = await readCalories(server);
+            notifications = await readNotifications(server);
+          }
+          signalStrength = await readSignalStrength(bluetoothDevice);
+          setDevices((prev) => prev.map((d) => (d.id === deviceId ? {
+            ...d,
+            connected: true,
+            paired: true,
+            lastSeen: new Date(),
+            batteryLevel,
+            signalStrength: signalStrength !== 0 ? signalStrength : d.signalStrength,
+            ...(device.type === "watch" ? {
+              heartRate,
+              steps,
+              calories,
+              notifications
+            } : {})
+          } : d)));
         } catch (err) {
-          // Falha ao conectar
           setDevices((prev) => prev.map((d) => (d.id === deviceId ? { ...d, connected: false } : d)));
         }
       } else {
@@ -1070,15 +1429,14 @@ export default function BluetoothCenter() {
           const server = await bluetoothDevice.gatt.connect()
           if (server) {
             wasJustPaired = true // Dispositivo foi pareado agora
-
-            // Buscar nível de bateria
             batteryLevel = await readBatteryLevel(server)
-
-            // Buscar batimentos cardíacos se for relógio
             if (device.type === "watch") {
               heartRate = await readHeartRate(server)
+              steps = await readSteps(server)
+              calories = await readCalories(server)
+              notifications = await readNotifications(server)
             }
-
+            signalStrength = await readSignalStrength(bluetoothDevice);
             setDevices((prev) =>
               prev.map((d) =>
                 d.id === deviceId
@@ -1088,7 +1446,13 @@ export default function BluetoothCenter() {
                       paired: true,
                       lastSeen: new Date(),
                       batteryLevel,
-                      ...(device.type === "watch" && heartRate !== undefined ? { heartRate } : {}),
+                      signalStrength: signalStrength !== 0 ? signalStrength : d.signalStrength,
+                      ...(device.type === "watch" ? {
+                        heartRate,
+                        steps,
+                        calories,
+                        notifications
+                      } : {}),
                     }
                   : d
               )
@@ -1147,8 +1511,13 @@ export default function BluetoothCenter() {
           connected: true,
           paired: true,
           batteryLevel,
-          // Se for relógio, salve também os dados de saúde
-          ...(device.type === "watch" && heartRate !== undefined ? { heartRate } : {})
+          signalStrength: signalStrength !== 0 ? signalStrength : updatedDevice.signalStrength,
+          ...(device.type === "watch" ? {
+            heartRate,
+            steps,
+            calories,
+            notifications
+          } : {})
         })
       }
 
@@ -1208,7 +1577,7 @@ export default function BluetoothCenter() {
   const removeDevice = (deviceId: string) => {
     setDevices((prev) => prev.filter((d) => d.id !== deviceId))
 
-    // Also remove from deviceCache and customDeviceNames
+    // Remove do cache e dos nomes personalizados
     const updatedCache = deviceCache.filter((d) => d.id !== deviceId)
     setDeviceCache(updatedCache)
 
@@ -1216,6 +1585,7 @@ export default function BluetoothCenter() {
     delete updatedNames[deviceId]
     setCustomDeviceNames(updatedNames)
 
+    // Sempre persiste no localStorage
     try {
       localStorage.setItem("bluetoothDeviceCache", JSON.stringify(updatedCache))
       localStorage.setItem("customDeviceNames", JSON.stringify(updatedNames))
@@ -1439,6 +1809,28 @@ const formatTime = (seconds: number) => {
     return buttonNames[index] || `Botão ${index}`
   }
 
+  // Função auxiliar para processar o primeiro chunk recebido
+const parseInitialChunk = (
+  chunk: Uint8Array,
+  fileTransferId: string,
+  setFiles: React.Dispatch<React.SetStateAction<FileTransfer[]>>
+) => {
+  const expectedSize = new DataView(chunk.buffer).getUint32(0, true);
+  const nameLen = new DataView(chunk.buffer).getUint16(4, true);
+  const fileName = new TextDecoder().decode(chunk.slice(6, 6 + nameLen));
+  const remainingChunk = chunk.slice(6 + nameLen);
+
+  setFiles((prev) =>
+    prev.map((f) =>
+      f.id === fileTransferId
+        ? { ...f, name: fileName, size: expectedSize }
+        : f
+    )
+  );
+
+  return { expectedSize, fileName, remainingChunk };
+};
+
   // Renderiza o conteúdo específico do dispositivo
   const renderDeviceSpecificContent = (device: BluetoothDevice) => {
     if (!device.connected) return null;
@@ -1551,14 +1943,84 @@ const formatTime = (seconds: number) => {
                 <span>{typeof device.notifications === 'number' ? `${device.notifications} notif.` : 'Não disponível'}</span>
               </div>
             </div>
-            <div className="mt-2 flex gap-1">
-              <Button size="sm" variant="outline" className="text-xs">
+            <div className="mt-2 flex gap-1 flex-wrap">
+              <Button size="sm" variant="outline" className="text-xs" onClick={async () => {
+                // Tenta acionar característica de chamada (exemplo: alert_notification/control_point)
+                try {
+                  if (device.connected) {
+                    // @ts-ignore
+                    const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+                      filters: [{ name: device.name }],
+                      optionalServices: ["alert_notification"]
+                    });
+                    const server = await bluetoothDevice.gatt.connect();
+                    const service = await server.getPrimaryService("alert_notification");
+                    let char = null;
+                    try { char = await service.getCharacteristic("control_point"); } catch {}
+                    try { if (!char) char = await service.getCharacteristic("00002A44-0000-1000-8000-00805f9b34fb"); } catch {}
+                    if (char) {
+                      await char.writeValue(Uint8Array.of(1));
+                      setSuccess("Comando de chamada enviado ao relógio!");
+                      setTimeout(() => setSuccess(null), 2000);
+                    } else {
+                      setError("Função de chamada não suportada neste relógio.");
+                      setTimeout(() => setError(null), 2000);
+                    }
+                  }
+                } catch (e) {
+                  setError("Erro ao tentar acionar chamada: " + (e instanceof Error ? e.message : String(e)));
+                  setTimeout(() => setError(null), 2000);
+                }
+              }}>
                 <Phone className="w-3 h-3 mr-1" />
                 Chamadas
               </Button>
-              <Button size="sm" variant="outline" className="text-xs">
+              <Button size="sm" variant="outline" className="text-xs" onClick={async () => {
+                // Tenta acionar característica de mensagem (exemplo: alert_notification/new_alert)
+                try {
+                  if (device.connected) {
+                    // @ts-ignore
+                    const bluetoothDevice = await (navigator as any).bluetooth.requestDevice({
+                      filters: [{ name: device.name }],
+                      optionalServices: ["alert_notification"]
+                    });
+                    const server = await bluetoothDevice.gatt.connect();
+                    const service = await server.getPrimaryService("alert_notification");
+                    let char = null;
+                    try { char = await service.getCharacteristic("new_alert"); } catch {}
+                    try { if (!char) char = await service.getCharacteristic("00002A46-0000-1000-8000-00805f9b34fb"); } catch {}
+                    if (char) {
+                      await char.writeValue(Uint8Array.of(1));
+                      setSuccess("Comando de mensagem enviado ao relógio!");
+                      setTimeout(() => setSuccess(null), 2000);
+                    } else {
+                      setError("Função de mensagem não suportada neste relógio.");
+                      setTimeout(() => setError(null), 2000);
+                    }
+                  }
+                } catch (e) {
+                  setError("Erro ao tentar acionar mensagem: " + (e instanceof Error ? e.message : String(e)));
+                  setTimeout(() => setError(null), 2000);
+                }
+              }}>
                 <MessageSquare className="w-3 h-3 mr-1" />
                 Mensagens
+              </Button>
+              <Button size="sm" variant="secondary" className="text-xs" onClick={async () => {
+                // Explorar serviços/características BLE (descoberta de UUIDs)
+                try {
+                  // Substitua por um modal ou exibição do componente BleExplorer
+                  // Exemplo: abrir um modal com <BleExplorer />
+                  // Ou simplesmente renderize <BleExplorer /> em algum lugar da tela
+                  alert('Abra o explorador Bluetooth no painel principal!');
+                } catch (e) {
+                  setError("Erro ao explorar serviços BLE: " + (e instanceof Error ? e.message : String(e)));
+                  setTimeout(() => setError(null), 2000);
+                }
+              }}>
+                <Zap className="w-3 h-3 mr-1" />
+                Explorar Serviços BLE
+// Sugestão: Renderize o componente BleExplorer em algum lugar do seu layout principal, por exemplo, dentro do conteúdo principal ou em um modal.
               </Button>
             </div>
           </div>
@@ -1803,21 +2265,23 @@ const formatTime = (seconds: number) => {
               </div>
 
               {/* PWA Install / Abrir App */}
-              <Button
-                onClick={installPWA}
-                size="sm"
-                className={
-                  (!isInstalled
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-green-600 hover:bg-green-700") +
-                  " text-white transition-colors flex-shrink-0 px-2 sm:px-4"
-                }
-              >
-                <Download className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="ml-1 sm:ml-2 text-xs sm:text-sm">
-                  {isInstalled ? "Abrir" : "Instalar"}
-                </span>
-              </Button>
+              {isClient && !isStandalone && (
+                <Button
+                  onClick={installPWA}
+                  size="sm"
+                  className={
+                    (!isInstalled
+                      ? "bg-blue-600 hover:bg-blue-700"
+                      : "bg-green-600 hover:bg-green-700") +
+                    " text-white transition-colors flex-shrink-0 px-2 sm:px-4"
+                  }
+                >
+                  <Download className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="ml-1 sm:ml-2 text-xs sm:text-sm">
+                    {isInstalled ? "Abrir App" : "Instalar"}
+                  </span>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -2625,7 +3089,7 @@ const formatTime = (seconds: number) => {
                             );
                           })
                       ) : (
-                        <p className="text-sm text-gray-500 text-center py-4">Nenhum dispositivo no histórico</p>
+                        <p className="text-sm text-gray-500 text-center py-4"><History className="w-4 h-4" /> Nenhum dispositivo no histórico</p>
                       )}
                     </div>
                     {deviceCache.length > 0 && (
@@ -2784,7 +3248,7 @@ const formatTime = (seconds: number) => {
                       </div>
                       <div className="flex items-center gap-2">
                           <Tv className="w-4 h-4" />
-                          <span className="text-sm">TV: Faça uma Transmissão de tela</span>
+                          <span className="text-sm">TV</span>
                         </div>
                     </div>
                   </div>

@@ -3627,7 +3627,7 @@ const parseInitialChunk = (
                             );
                           })
                       ) : (
-                        <p className="text-sm text-gray-500 text-center py-4"><History className="w-4 h-4" /> Nenhum dispositivo no histórico</p>
+                        <p className="text-sm text-gray-500 text-center py-4">Nenhum dispositivo no histórico</p>
                       )}
                     </div>
                     {deviceCache.length > 0 && (

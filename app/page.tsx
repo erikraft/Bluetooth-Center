@@ -2847,8 +2847,9 @@ const parseInitialChunk = (
               <h2 className="text-2xl font-bold text-gray-900">Histórico de Transferências</h2>
               <Badge variant="secondary">{history.length} transferências</Badge>
             </div>
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded mb-2 text-yellow-800 text-sm">
-              O histórico é temporário e será apagado automaticamente após 20 dias.
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded mb-2 text-yellow-800 text-sm flex items-center gap-2">
+                <History className="w-5 h-5 flex-shrink-0" />
+                <span>O histórico é temporário e será apagado automaticamente após 20 dias.</span>
             </div>
 
             {history.length > 0 ? (

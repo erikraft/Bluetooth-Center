@@ -54,3 +54,17 @@ const NOTIFY_CHAR_UUID    = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
 ## 🙏 感谢大家的支持
 
 [![Star History Chart](https://api.star-history.com/svg?repos=erikraft/Bluetooth-Center&type=Date)](https://star-history.com/#erikraft/Bluetooth-Center&Date)
+
+---
+
+## 📞 支持
+<a href="https://ko-fi.com/erikraft" target="_blank">
+<img src="./brand-assets/support_me_on_kofi_badge_blue.png" width="150" alt="Donate"/>
+</a>
+<br />
+<br />
+
+Bluetooth Center 是自由的，并且永远如此。\
+如果你觉得它有用并希望支持自由和开源软件，请考虑使用上面的按钮捐赠。\
+我自掏腰包支付了域名和服务器，你可以通过支持我来帮助创建和维护优秀的软件。\
+非常感谢你的贡献！

@@ -66,7 +66,7 @@ const NOTIFY_CHAR_UUID    = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
 <br />
 <br />
 
-ErikrafT Drop is libre, and always will be. \
+Bluetooth Center is libre, and always will be. \
 If you find it useful and want to support free and open-source software, please consider donating using the button above. \
 I footed the bill for the domain and the server, and you can help create and maintain great software by supporting me. \
 Thank you very much for your contribution!

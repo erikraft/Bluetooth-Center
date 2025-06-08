@@ -56,3 +56,17 @@ const NOTIFY_CHAR_UUID    = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
 ## 🙏 Thank you for everyone's support
 
 [![Star History Chart](https://api.star-history.com/svg?repos=erikraft/Bluetooth-Center&type=Date)](https://star-history.com/#erikraft/Bluetooth-Center&Date)
+
+---
+
+## 📞 Support
+<a href="https://ko-fi.com/erikraft" target="_blank">
+<img src="./brand-assets/support_me_on_kofi_badge_blue.png" width="150" alt="Donate"/>
+</a>
+<br />
+<br />
+
+ErikrafT Drop is libre, and always will be. \
+If you find it useful and want to support free and open-source software, please consider donating using the button above. \
+I footed the bill for the domain and the server, and you can help create and maintain great software by supporting me. \
+Thank you very much for your contribution!

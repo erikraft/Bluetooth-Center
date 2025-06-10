@@ -57,7 +57,7 @@ const NOTIFY_CHAR_UUID    = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
 
 ---
 
-## 📞 Suporte
+## 💰 Suporte
 <a href="https://ko-fi.com/erikraft" target="_blank">
 <img src="./brand-assets/support_me_on_kofi_badge_blue.png" width="150" alt="Donate"/>
 </a>

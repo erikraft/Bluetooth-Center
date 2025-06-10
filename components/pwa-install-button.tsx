@@ -96,38 +96,65 @@ export default function PwaInstallButton() {
     }
   };
 
-  // Mostrar botão apenas se:
-  // 1. beforeinstallprompt foi disparado (isVisible)
-  // OU
-  // 2. PWA está instalado mas não está em standalone (mostrar "Abrir App")
-  // NÃO mostrar botão dentro do PWA (standalone)
+  // Mostrar botão:
+  // 1. Se não está instalado, mostrar "Instalar App" quando isVisible
+  // 2. Se está instalado mas não está em standalone, mostrar "Abrir App"
+  // 3. Nunca mostrar se está em standalone
   if (!isClient || isStandalone) {
     return null;
   }
-  if (!isVisible && !(isInstalled && !isStandalone)) {
-    return null;
+
+  if (isInstalled && !isStandalone) {
+    // Mostrar botão "Abrir App"
+    return (
+      <button
+        onClick={handleInstallClick}
+        style={{
+          position: "fixed",
+          bottom: 20,
+          right: 20,
+          padding: "10px 20px",
+          backgroundColor: "#059669",
+          color: "white",
+          border: "none",
+          borderRadius: 8,
+          cursor: "pointer",
+          zIndex: 1000,
+          fontWeight: 600,
+          fontSize: 16,
+        }}
+        aria-label="Abrir App Bluetooth Center"
+      >
+        Abrir App
+      </button>
+    );
   }
 
-  return (
-    <button
-      onClick={handleInstallClick}
-      style={{
-        position: "fixed",
-        bottom: 20,
-        right: 20,
-        padding: "10px 20px",
-        backgroundColor: isInstalled && !isStandalone ? "#059669" : "#1e40af",
-        color: "white",
-        border: "none",
-        borderRadius: 8,
-        cursor: "pointer",
-        zIndex: 1000,
-        fontWeight: 600,
-        fontSize: 16,
-      }}
-      aria-label={isInstalled && !isStandalone ? "Abrir App" : "Instalar Bluetooth Center"}
-    >
-      {isInstalled && !isStandalone ? "Abrir App" : "Instalar App"}
-    </button>
-  );
+  if (!isInstalled && isVisible) {
+    // Mostrar botão "Instalar App"
+    return (
+      <button
+        onClick={handleInstallClick}
+        style={{
+          position: "fixed",
+          bottom: 20,
+          right: 20,
+          padding: "10px 20px",
+          backgroundColor: "#1e40af",
+          color: "white",
+          border: "none",
+          borderRadius: 8,
+          cursor: "pointer",
+          zIndex: 1000,
+          fontWeight: 600,
+          fontSize: 16,
+        }}
+        aria-label="Instalar Bluetooth Center"
+      >
+        Instalar App
+      </button>
+    );
+  }
+
+  return null;
 }

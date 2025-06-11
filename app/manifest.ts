@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next"
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Bluetooth Center - Transferências Bluetooth",
-    short_name: "Bluetooth Center",
+    name: "Bluetooth Center",
+    short_name: "BT Center",
     description: "Centro completo de transferências Bluetooth - Funciona 100% offline",
     start_url: "/",
     display: "standalone",

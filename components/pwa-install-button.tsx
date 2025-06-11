@@ -1,7 +1,8 @@
 "use client"
 
-
 import React, { useEffect, useState } from "react"
+import { Button } from "@/components/ui/button"
+import BluetoothLogo from "@/components/BluetoothLogo"
 
 export default function PwaInstallButton() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
@@ -105,54 +106,30 @@ export default function PwaInstallButton() {
   }
 
   if (isInstalled && !isStandalone) {
-    // Mostrar botão "Abrir App"
     return (
-      <button
+      <Button
         onClick={handleInstallClick}
-        style={{
-          position: "fixed",
-          bottom: 20,
-          right: 20,
-          padding: "10px 20px",
-          backgroundColor: "#059669",
-          color: "white",
-          border: "none",
-          borderRadius: 8,
-          cursor: "pointer",
-          zIndex: 1000,
-          fontWeight: 600,
-          fontSize: 16,
-        }}
+        variant="secondary"
+        className="gap-2 px-3 py-2 rounded-lg font-semibold text-base shadow-sm hover:bg-primary/90 transition-colors"
         aria-label="Abrir App Bluetooth Center"
       >
-        Abrir App
-      </button>
+        <BluetoothLogo style={{ width: 20, height: 20 }} />
+        <span className="hidden sm:inline">Abrir App</span>
+      </Button>
     );
   }
 
   if (!isInstalled && isVisible) {
-    // Mostrar botão "Instalar App"
     return (
-      <button
+      <Button
         onClick={handleInstallClick}
-        style={{
-          position: "fixed",
-          bottom: 20,
-          right: 20,
-          padding: "10px 20px",
-          backgroundColor: "#1e40af",
-          color: "white",
-          border: "none",
-          borderRadius: 8,
-          cursor: "pointer",
-          zIndex: 1000,
-          fontWeight: 600,
-          fontSize: 16,
-        }}
+        variant="default"
+        className="gap-2 px-3 py-2 rounded-lg font-semibold text-base shadow-sm hover:bg-primary/90 transition-colors"
         aria-label="Instalar Bluetooth Center"
       >
-        Instalar App
-      </button>
+        <BluetoothLogo style={{ width: 20, height: 20 }} />
+        <span className="hidden sm:inline">Instalar App</span>
+      </Button>
     );
   }
 

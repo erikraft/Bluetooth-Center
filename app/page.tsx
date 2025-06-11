@@ -223,8 +223,10 @@ Tv,
   Globe,
 } from "lucide-react"
 
+
 import { SnakeGame } from "@/components/snake-game"
 import BleExplorer from "../ble-explorer"
+import PwaInstallButton from "../components/pwa-install-button"
 
 interface BluetoothDevice {
   id: string
@@ -2828,21 +2830,7 @@ const parseInitialChunk = (
 
               {/* PWA Install / Abrir App */}
               {isClient && !isStandalone && (
-                <Button
-                  onClick={installPWA}
-                  size="sm"
-                  className={
-                    (!isInstalled
-                      ? "bg-blue-600 hover:bg-blue-700"
-                      : "bg-green-600 hover:bg-green-700") +
-                    " text-white transition-colors flex-shrink-0 px-2 sm:px-4"
-                  }
-                >
-                  <Download className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="ml-1 sm:ml-2 text-xs sm:text-sm">
-                    {isInstalled ? "Abrir App" : "Instalar"}
-                  </span>
-                </Button>
+                <PwaInstallButton />
               )}
             </div>
           </div>
@@ -3031,158 +3019,34 @@ const parseInitialChunk = (
               </div>
             </div>
 
-            {/* Connected Devices */}
-            {devices.filter((d) => d.connected).length > 0 ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                    Dispositivos Conectados
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+            {/* Lista Unificada de Dispositivos */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bluetooth className="w-5 h-5" />
+                  Todos os Dispositivos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {devices.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {devices
-                      .filter((d) => d.connected)
+                      .sort((a, b) => {
+                        // Conectados primeiro, depois pareados, depois disponíveis
+                        if (a.connected && !b.connected) return -1;
+                        if (!a.connected && b.connected) return 1;
+                        if (a.paired && !b.paired) return -1;
+                        if (!a.paired && b.paired) return 1;
+                        return 0;
+                      })
                       .map((device) => {
-                        const DeviceIcon = getDeviceIcon(device.type)
+                        const DeviceIcon = getDeviceIcon(device.type);
                         return (
                           <div key={device.id} className="relative group">
-                            <div className="p-3 sm:p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border-2 border-green-200">
+                            <div className={`p-3 sm:p-4 rounded-xl border-2 ${device.connected ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200' : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200'}`}>
                               <div className="flex items-start justify-between mb-2 sm:mb-3">
                                 <div className="flex items-center gap-2 sm:gap-3">
-                                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500 rounded-full flex items-center justify-center">
-                                    <DeviceIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                                  </div>
-                                  <div>
-                                    {editingDeviceName === device.id ? (
-                                      <div className="flex items-center gap-2">
-                                        <Input
-                                          value={tempDeviceName}
-                                          onChange={(e) => setTempDeviceName(e.target.value)}
-                                          className="text-sm h-8"
-                                          onKeyPress={(e) => {
-                                            if (e.key === "Enter") {
-                                              updateDeviceName(device.id, tempDeviceName)
-                                              setEditingDeviceName(null)
-                                              setTempDeviceName("")
-                                            }
-                                          }}
-                                        />
-                                        <Button
-                                          size="sm"
-                                          onClick={() => {
-                                            updateDeviceName(device.id, tempDeviceName)
-                                            setEditingDeviceName(null)
-                                            setTempDeviceName("")
-                                          }}
-                                          className="h-8 px-2"
-                                        >
-                                          ✓
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() => {
-                                            setEditingDeviceName(null)
-                                            setTempDeviceName("")
-                                          }}
-                                          className="h-8 px-2"
-                                        >
-                                          ✕
-                                        </Button>
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center gap-2">
-                                        <h3 className="font-semibold text-sm sm:text-base text-gray-900">
-                                          {getDisplayName(device)}
-                                        </h3>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() => {
-                                            setEditingDeviceName(device.id)
-                                            setTempDeviceName(getDisplayName(device))
-                                          }}
-                                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                          <Edit3 className="w-3 h-3" />
-                                        </Button>
-                                      </div>
-                                    )}
-                                    <p className="text-xs sm:text-sm text-gray-600">Conectado</p>
-                                  </div>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => disconnectDevice(device.id)}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
-                                >
-                                  <X className="w-4 h-4" />
-                                </Button>
-                              </div>
-
-                              <div className="space-y-1 sm:space-y-2 mb-3 sm:mb-4">
-                                <div className="flex items-center justify-between text-xs sm:text-sm">
-                                  <span className="text-gray-600">Sinal:</span>
-                                  <div className="flex items-center gap-1">
-                                    <Signal className="w-3 h-3" />
-                                    <span>{device.signalStrength}/5</span>
-                                  </div>
-                                </div>
-                                {device.batteryLevel && (
-                                  <div className="flex items-center justify-between text-xs sm:text-sm">
-                                    <span className="text-gray-600">Bateria:</span>
-                                    <div className="flex items-center gap-1">
-                                      <Battery className="w-3 h-3" />
-                                      <span>{device.batteryLevel}%</span>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              {renderDeviceSpecificContent(device)}
-                            </div>
-                          </div>
-                        )
-                      })}
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="text-center py-8">
-                  <Bluetooth className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">Nenhum dispositivo conectado</p>
-                  <p className="text-gray-400 text-xs mt-1">
-                    Clique em "Procurar Dispositivos" para encontrar dispositivos próximos
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Available Devices */}
-            {devices.filter((d) => !d.connected).length > 0 ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Bluetooth className="w-5 h-5" />
-                    Dispositivos Disponíveis
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                    {devices
-                      .filter((d) => !d.connected)
-                      .map((device) => {
-                        const DeviceIcon = getDeviceIcon(device.type)
-                        return (
-                          <div key={device.id} className="relative group">
-                            <div className="p-3 sm:p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-gray-200">
-                              <div className="flex items-start justify-between mb-2 sm:mb-3">
-                                <div className="flex items-center gap-2 sm:gap-3">
-                                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-400 rounded-full flex items-center justify-center">
+                                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${device.connected ? 'bg-green-500' : 'bg-gray-400'}`}> 
                                     <DeviceIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                                   </div>
                                   <div>
@@ -3242,7 +3106,7 @@ const parseInitialChunk = (
                                       </div>
                                     )}
                                     <p className="text-xs sm:text-sm text-gray-600">
-                                      {device.paired ? "Pareado" : "Disponível"}
+                                      {device.connected ? 'Conectado' : device.paired ? 'Pareado' : 'Disponível'}
                                     </p>
                                     {device.capabilities && (
                                       <div className="flex flex-wrap gap-1 mt-1">
@@ -3258,7 +3122,7 @@ const parseInitialChunk = (
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => removeDevice(device.id)}
+                                  onClick={() => device.connected ? disconnectDevice(device.id) : removeDevice(device.id)}
                                   className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
                                 >
                                   <X className="w-4 h-4" />
@@ -3281,37 +3145,58 @@ const parseInitialChunk = (
                                     <span>{device.signalStrength != null ? device.signalStrength : "-"}/5</span>
                                   </div>
                                 </div>
+                                {device.batteryLevel && (
+                                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                                    <span className="text-gray-600">Bateria:</span>
+                                    <div className="flex items-center gap-1">
+                                      <Battery className="w-3 h-3" />
+                                      <span>{device.batteryLevel}%</span>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
 
-                              <Button
-                                onClick={() => connectDevice(device.id)}
-                                variant="outline"
-                                className="w-full text-xs sm:text-sm"
-                                size="sm"
-                              >
-                                <Bluetooth className="w-3 h-3 mr-1 sm:mr-2" />
-                                Conectar
-                              </Button>
+                              {/* Ações de conectar/desconectar */}
+                              {device.connected ? (
+                                <Button
+                                  onClick={() => disconnectDevice(device.id)}
+                                  variant="outline"
+                                  className="w-full text-xs sm:text-sm"
+                                  size="sm"
+                                >
+                                  <Bluetooth className="w-3 h-3 mr-1 sm:mr-2" />
+                                  Desconectar
+                                </Button>
+                              ) : (
+                                <Button
+                                  onClick={() => connectDevice(device.id)}
+                                  variant="outline"
+                                  className="w-full text-xs sm:text-sm"
+                                  size="sm"
+                                >
+                                  <Bluetooth className="w-3 h-3 mr-1 sm:mr-2" />
+                                  Conectar
+                                </Button>
+                              )}
+
+                              {/* Conteúdo específico do dispositivo, se conectado */}
+                              {device.connected && renderDeviceSpecificContent(device)}
                             </div>
                           </div>
                         )
                       })}
                   </div>
-                </CardContent>
-              </Card>
-            ) : (
-              !isScanning && (
-                <Card>
-                  <CardContent className="text-center py-12">
+                ) : (
+                  <div className="text-center py-12">
                     <Bluetooth className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 text-sm">Nenhum dispositivo disponível</p>
+                    <p className="text-gray-500 text-sm">Nenhum dispositivo encontrado</p>
                     <p className="text-gray-400 text-xs mt-1">
                       Clique em "Procurar Dispositivos" para encontrar dispositivos Bluetooth próximos
                     </p>
-                  </CardContent>
-                </Card>
-              )
-            )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Transfers Tab */}
@@ -3513,7 +3398,7 @@ const parseInitialChunk = (
                       <div>
                         <b>Nome personalizado:</b> <span id="custom-device-name">{deviceName}</span>
                       </div>
-                      <div className="text-red-600">
+                      <div className="text-yellow-600 bg-yellow-50 border-l-4 border-yellow-400 p-2 rounded">
                         <b>Aviso:</b> Por limitações de segurança dos navegadores, <b>não é possível exibir o nome Bluetooth real do seu dispositivo</b> nesta página.<br/>
                         O nome Bluetooth (aquele visto por outros dispositivos durante o pareamento) só pode ser alterado ou visualizado nas configurações do sistema operacional.<br/>
                         O nome acima é apenas o nome do sistema operacional detectado, e o nome personalizado é usado apenas neste app.
@@ -3595,75 +3480,83 @@ const parseInitialChunk = (
                   <div className="space-y-2 sm:space-y-4">
                     <Label className="text-sm">Histórico de Dispositivos</Label>
                     <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {deviceCache.length > 0 ? (
-                        deviceCache
-                          .sort((a, b) => {
-                            // Ordena por última vez visto (mais recente primeiro)
-                            const aTime = a.lastSeen ? new Date(a.lastSeen).getTime() : 0;
-                            const bTime = b.lastSeen ? new Date(b.lastSeen).getTime() : 0;
-                            return bTime - aTime;
-                          })
-                          .map((device) => {
-                            const DeviceIcon = getDeviceIcon(device.type);
-                            return (
-                              <div
-                                key={device.id}
-                                className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <DeviceIcon className="w-4 h-4 text-gray-600" />
-                                  <div>
-                                    <p className="text-sm font-medium">{getDisplayName(device)}</p>
-                                    <p className="text-xs text-gray-500">
-                                      Última vez: {device.lastSeen && typeof device.lastSeen === "object" && "toLocaleString" in device.lastSeen ? (device.lastSeen as Date).toLocaleString() : (typeof device.lastSeen === "string" ? new Date(device.lastSeen).toLocaleString() : "-")}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      Tipo: {device.type.charAt(0).toUpperCase() + device.type.slice(1)}
-                                    </p>
-                                    {device.paired && <span className="text-xs text-green-600">Pareado</span>}
-                                  </div>
-                                </div>
-                                <div className="flex gap-1">
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => {
-                                      setEditingDeviceName(device.id);
-                                      setTempDeviceName(getDisplayName(device));
-                                    }}
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <Edit3 className="w-3 h-3" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => {
-                                      const updatedCache = deviceCache.filter((d) => d.id !== device.id);
-                                      setDeviceCache(updatedCache);
-                                      const updatedNames = { ...customDeviceNames };
-                                      delete updatedNames[device.id];
-                                      setCustomDeviceNames(updatedNames);
-                                      try {
-                                        localStorage.setItem("bluetoothDeviceCache", JSON.stringify(updatedCache));
-                                        localStorage.setItem("customDeviceNames", JSON.stringify(updatedNames));
-                                      } catch (error) {
-                                        console.error("Erro ao remover do cache:", error);
-                                      }
-                                    }}
-                                    className="h-8 w-8 p-0 text-red-600"
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                  </Button>
+                    {deviceCache.length > 0 ? (
+                      deviceCache
+                        .sort((a, b) => {
+                          // Ordena por última vez visto (mais recente primeiro)
+                          const aTime = a.lastSeen ? new Date(a.lastSeen).getTime() : 0;
+                          const bTime = b.lastSeen ? new Date(b.lastSeen).getTime() : 0;
+                          return bTime - aTime;
+                        })
+                        .map((device) => {
+                          const DeviceIcon = getDeviceIcon(device.type);
+                          return (
+                            <div
+                              key={device.id}
+                              className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                            >
+                              <div className="flex items-center gap-2">
+                                <DeviceIcon className="w-4 h-4 text-gray-600" />
+                                <div>
+                                  <p className="text-sm font-medium">{getDisplayName(device)}</p>
+                                  <p className="text-xs text-gray-500">
+                                    Última vez: {device.lastSeen && typeof device.lastSeen === "object" && "toLocaleString" in device.lastSeen ? (device.lastSeen as Date).toLocaleString() : (typeof device.lastSeen === "string" ? new Date(device.lastSeen).toLocaleString() : "-")}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    Tipo: {device.type.charAt(0).toUpperCase() + device.type.slice(1)}
+                                  </p>
+                                  {device.paired && <span className="text-xs text-green-600">Pareado</span>}
                                 </div>
                               </div>
-                            );
-                          })
-                      ) : (
-                        <p className="text-sm text-gray-500 text-center py-4">Nenhum dispositivo no histórico</p>
-                      )}
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingDeviceName(device.id);
+                                    setTempDeviceName(getDisplayName(device));
+                                  }}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    const updatedCache = deviceCache.filter((d) => d.id !== device.id);
+                                    setDeviceCache(updatedCache);
+                                    const updatedNames = { ...customDeviceNames };
+                                    delete updatedNames[device.id];
+                                    setCustomDeviceNames(updatedNames);
+                                    try {
+                                      localStorage.setItem("bluetoothDeviceCache", JSON.stringify(updatedCache));
+                                      localStorage.setItem("customDeviceNames", JSON.stringify(updatedNames));
+                                    } catch (error) {
+                                      console.error("Erro ao remover do cache:", error);
+                                    }
+                                  }}
+                                  className="h-8 w-8 p-0 text-red-600"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => connectDevice(device.id)}
+                                  className="h-8 w-20"
+                                >
+                                  Conectar
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })
+                    ) : (
+                      <p className="text-sm text-gray-500 text-center py-4">Nenhum dispositivo no histórico</p>
+                    )}
                     </div>
                     {deviceCache.length > 0 && (
                       <Button

@@ -22,12 +22,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: pnpm
+          cache: 'npm'  # cache npm para não interferir em pnpm
 
       - name: 📦 Setup pnpm
         uses: pnpm/action-setup@v2
         with:
           version: 8
+
+      - name: 📢 Verificar versão pnpm
+        run: pnpm --version
 
       - name: 📥 Instalar dependências
         run: pnpm install

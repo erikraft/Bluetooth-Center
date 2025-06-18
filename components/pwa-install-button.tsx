@@ -23,6 +23,8 @@ export default function PwaInstallButton() {
   const checkInstalled = () => {
     // iOS não dispara appinstalled, então checa por outros meios
     if (checkStandalone()) return true;
+    // Checa se o app está registrado como instalado, mesmo em IP local
+    if (window.matchMedia('(display-mode: standalone)').matches) return true;
     const installedFlag = localStorage.getItem("pwa-installed");
     return installedFlag === "true";
   };
@@ -54,23 +56,21 @@ export default function PwaInstallButton() {
     window.addEventListener("beforeinstallprompt", beforeInstallPromptHandler);
     window.addEventListener("appinstalled", appInstalledHandler);
     window.addEventListener("visibilitychange", updateStatus);
-
-    // Atualiza status ao focar a janela (caso o usuário instale/desinstale manualmente)
     window.addEventListener("focus", updateStatus);
+    window.addEventListener("pageshow", updateStatus);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", beforeInstallPromptHandler);
       window.removeEventListener("appinstalled", appInstalledHandler);
       window.removeEventListener("visibilitychange", updateStatus);
       window.removeEventListener("focus", updateStatus);
+      window.removeEventListener("pageshow", updateStatus);
     };
   }, []);
 
   const handleInstallClick = async () => {
     if (isInstalled && !isStandalone) {
       // Tenta abrir o PWA instalado
-      // Para Android/Chrome, window.location.href = "/" pode abrir o app
-      // Para outros, tente window.open
       try {
         window.open(window.location.origin, "_self");
       } catch {
@@ -79,59 +79,71 @@ export default function PwaInstallButton() {
       return;
     }
 
-    if (!deferredPrompt) {
-      // Caso não tenha prompt, mostra instrução
-      alert("Para instalar, use o menu do navegador: 'Adicionar à tela inicial'.");
-      return;
+    // Sempre tenta o prompt nativo primeiro, se possível
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choiceResult = await deferredPrompt.userChoice;
+      if (choiceResult && choiceResult.outcome === "accepted") {
+        setIsInstalled(true);
+        setIsVisible(false);
+        setDeferredPrompt(null);
+        localStorage.setItem("pwa-installed", "true");
+        return;
+      } else {
+        setDeferredPrompt(null);
+        setIsVisible(false);
+      }
     }
-    deferredPrompt.prompt();
-    const choiceResult = await deferredPrompt.userChoice;
-    if (choiceResult && choiceResult.outcome === "accepted") {
-      setIsInstalled(true);
-      setIsVisible(false);
-      setDeferredPrompt(null);
-      localStorage.setItem("pwa-installed", "true");
-    } else {
-      setDeferredPrompt(null);
-      setIsVisible(false);
-    }
+
+    // Se não houver prompt ou não funcionou, mostra instrução manual
+    alert("Para instalar, use o menu do navegador: 'Adicionar à tela inicial'.");
   };
 
-  // Mostrar botão:
-  // 1. Se não está instalado, mostrar "Instalar App" quando isVisible
-  // 2. Se está instalado mas não está em standalone, mostrar "Abrir App"
+
+  // Mostrar botão universalmente (mobile e desktop):
+  // 1. Se não está instalado, mostrar "Instalar App" quando isVisible OU quando for mobile (sempre que possível)
+  // 2. Se está instalado mas não está em standalone, mostrar "Abrir App" (mobile e desktop)
   // 3. Nunca mostrar se está em standalone
   if (!isClient || isStandalone) {
     return null;
   }
 
+  // Mostrar "Abrir App" se instalado, mas não em standalone
   if (isInstalled && !isStandalone) {
     return (
-      <Button
-        onClick={handleInstallClick}
-        variant="secondary"
-        className="gap-2 px-3 py-2 rounded-lg font-semibold text-base shadow-sm hover:bg-primary/90 transition-colors"
-        aria-label="Abrir App Bluetooth Center"
-      >
-        <BluetoothLogo style={{ width: 20, height: 20 }} />
-        <span className="hidden sm:inline">Abrir App</span>
-      </Button>
+      <div className="flex flex-col items-center w-full max-w-xs mx-auto gap-1">
+        <Button
+          onClick={handleInstallClick}
+          variant="secondary"
+          className="w-full max-w-[240px] h-10 text-sm sm:w-auto sm:h-10 sm:text-base gap-2 px-3 py-2 rounded-lg font-semibold shadow-sm hover:bg-primary/90 transition-colors"
+          aria-label="Abrir App Bluetooth Center"
+        >
+          <BluetoothLogo style={{ width: 18, height: 18 }} />
+          <span className="inline">Abrir App</span>
+        </Button>
+        <span className="text-xs text-center text-muted-foreground max-w-full break-words sm:hidden">O app já está instalado! Toque para abrir o PWA.</span>
+      </div>
     );
   }
 
-  if (!isInstalled && isVisible) {
+  // Mostrar "Instalar App" se não está instalado e prompt disponível
+  if (!isInstalled && (isVisible || /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent))) {
     return (
-      <Button
-        onClick={handleInstallClick}
-        variant="default"
-        className="gap-2 px-3 py-2 rounded-lg font-semibold text-base shadow-sm hover:bg-primary/90 transition-colors"
-        aria-label="Instalar Bluetooth Center"
-      >
-        <BluetoothLogo style={{ width: 20, height: 20 }} />
-        <span className="hidden sm:inline">Instalar App</span>
-      </Button>
+      <div className="flex flex-col items-center w-full max-w-xs mx-auto gap-1">
+        <Button
+          onClick={handleInstallClick}
+          variant="default"
+          className="w-full max-w-[240px] h-10 text-sm sm:w-auto sm:h-10 sm:text-base gap-2 px-3 py-2 rounded-lg font-semibold shadow-sm hover:bg-primary/90 transition-colors"
+          aria-label="Instalar Bluetooth Center"
+        >
+          <BluetoothLogo style={{ width: 18, height: 18 }} />
+          <span className="inline">Instalar App</span>
+        </Button>
+        <span className="text-xs text-center text-muted-foreground max-w-full break-words sm:hidden">Instale o app para uma experiência completa no seu dispositivo.</span>
+      </div>
     );
   }
 
   return null;
+
 }

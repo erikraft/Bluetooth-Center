@@ -4,12 +4,22 @@ import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
 
+// Viewport configuration should be in a separate export
+import { Viewport } from 'next'
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#1e40af',
+}
+
 export const metadata: Metadata = {
   title: "Bluetooth Center",
   description: "Centro completo de transferências Bluetooth - Funciona 100% offline",
   manifest: "/manifest.webmanifest",
-  themeColor: "#1e40af",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
   icons: {
     icon: [
       { url: "/bluetooth-logo.png", sizes: "32x32", type: "image/png" },

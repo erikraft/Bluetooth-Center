@@ -1115,16 +1115,41 @@ export default function BluetoothCenter() {
       let notifications: number | undefined = undefined
       let signalStrength: number = 0;
 
-      // Função para ler nível de bateria
-      const readBatteryLevel = async (gatt: any) => {
-        try {
-          const service = await gatt.getPrimaryService("battery_service")
-          const characteristic = await service.getCharacteristic("battery_level")
-          const value = await characteristic.readValue()
-          return value.getUint8(0)
-        } catch {
-          return undefined
+      // Função para ler nível de bateria (BLE padrão + Smart Fit)
+      const readBatteryLevel = async (gatt: any): Promise<number | undefined> => {
+        // Lista de combinações de UUIDs para tentar (padrão e Smart Fit)
+        const serviceUuids = [
+          "battery_service",
+          "0000180f-0000-1000-8000-00805f9b34fb", // BLE padrão (128 bits)
+          "0000fee0-0000-1000-8000-00805f9b34fb", // Smart Fit/Xiaomi
+          "0000fee1-0000-1000-8000-00805f9b34fb", // Alternativo
+        ];
+        const charUuids = [
+          "battery_level",
+          "00002a19-0000-1000-8000-00805f9b34fb", // BLE padrão
+          "00000006-0000-3512-2118-0009af100700", // Mi Band 4/5/6
+          "00002a1b-0000-1000-8000-00805f9b34fb", // Alternativo
+        ];
+        for (const serviceUuid of serviceUuids) {
+          try {
+            const service = await gatt.getPrimaryService(serviceUuid).catch(() => null);
+            if (!service) continue;
+            for (const charUuid of charUuids) {
+              try {
+                const characteristic = await service.getCharacteristic(charUuid).catch(() => null);
+                if (!characteristic) continue;
+                const value = await characteristic.readValue();
+                const battery = value.getUint8(0);
+                if (!isNaN(battery)) return battery;
+              } catch (err) {
+                // Continua tentando próximo UUID
+              }
+            }
+          } catch (err) {
+            // Continua tentando próximo serviceUuid
+          }
         }
+        return undefined;
       }
 
       // Função para ler batimentos cardíacos

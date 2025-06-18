@@ -4,6 +4,17 @@ const NOTIFY_CHAR_UUID = '4dd9a968-c64b-41cd-822c-b9e723582c4e';
   // Recepção real de arquivo via BLE
   const receiveFileOverBluetooth = async (device: BluetoothDevice) => {
     setSuccess('Aguardando envio do arquivo via Bluetooth...');
+if (audioRefWaiting.current) {
+  try {
+    audioRefWaiting.current.play();
+  } catch {
+    const playOnClick = () => {
+      if (audioRefWaiting.current) audioRefWaiting.current.play().catch(() => {});
+      document.removeEventListener('click', playOnClick);
+    };
+    document.addEventListener('click', playOnClick, { once: true });
+  }
+}
     setError(null);
     try {
       // Solicita o dispositivo Bluetooth novamente para garantir acesso ao GATT
@@ -1092,6 +1103,18 @@ export default function BluetoothCenter() {
   }
 
   const connectDevice = async (deviceId: string) => {
+  if (audioRef.current) {
+    try {
+      await audioRef.current.play();
+    } catch (e) {
+      // Se bloquear, tenta após clique
+      const playOnClick = () => {
+        if (audioRef.current) audioRef.current.play().catch(() => {});
+        document.removeEventListener('click', playOnClick);
+      };
+      document.addEventListener('click', playOnClick, { once: true });
+    }
+  }
     if (connectingDeviceId) {
       // Prevent multiple concurrent connections
       return
@@ -1579,6 +1602,17 @@ export default function BluetoothCenter() {
   }
 
   const disconnectDevice = (deviceId: string) => {
+  if (audioRefDisconnected.current) {
+    try {
+      audioRefDisconnected.current.play();
+    } catch {
+      const playOnClick = () => {
+        if (audioRefDisconnected.current) audioRefDisconnected.current.play().catch(() => {});
+        document.removeEventListener('click', playOnClick);
+      };
+      document.addEventListener('click', playOnClick, { once: true });
+    }
+  }
     const device = devices.find((d) => d.id === deviceId)
 
     // Do NOT play audio during unload to avoid async errors

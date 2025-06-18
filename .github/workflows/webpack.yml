@@ -1,4 +1,4 @@
-name: 🚀 Build do Bluetooth Center (Next.js)
+name: 🚀 Build e Test do Bluetooth Center (Next.js)
 
 on:
   push:
@@ -15,20 +15,26 @@ jobs:
         node-version: [22.x]
 
     steps:
-      - name: 📦 Clonar repositório
+      - name: 📦 Checkout do código
         uses: actions/checkout@v4
 
-      - name: 🔧 Usar Node.js ${{ matrix.node-version }}
+      - name: 🔧 Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
+          cache: pnpm
 
-      - name: 🛠️ Instalar pnpm
+      - name: ⚙️ Instalar pnpm
         run: npm install -g pnpm
 
       - name: 📥 Instalar dependências
         run: pnpm install
 
-      - name: 🧪 Build do projeto Next.js
+      - name: 🔍 Rodar lint (opcional)
+        run: pnpm run lint
+
+      - name: 🧪 Rodar testes (opcional)
+        run: pnpm test
+
+      - name: 🛠️ Build do Next.js
         run: pnpm run build

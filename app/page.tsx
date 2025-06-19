@@ -342,6 +342,10 @@ function updateInstallStatus(setIsInstalled: (v: boolean) => void) {
 }
 
 export default function BluetoothCenter() {
+  // Audio feedback refs - declarado uma única vez no início do componente
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRefWaiting = useRef<HTMLAudioElement>(null);
+  const audioRefDisconnected = useRef<HTMLAudioElement>(null);
   // Garante renderização client-side para evitar hydration mismatch
   const [isClient, setIsClient] = useState(false);
   useEffect(() => { setIsClient(true); }, []);
@@ -419,9 +423,6 @@ export default function BluetoothCenter() {
   const [success, setSuccess] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const audioRefDisconnected = useRef<HTMLAudioElement | null>(null)
-  const audioRefWaiting = useRef<HTMLAudioElement | null>(null)
   const [activeTab, setActiveTab] = useState("devices")
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isInstallable, setIsInstallable] = useState(false)
@@ -1058,7 +1059,17 @@ export default function BluetoothCenter() {
       name.includes("redmi") ||
       name.includes("poco") ||
       name.includes("mi ") ||
-      name.includes("mi_")
+      name.includes("mi_") ||
+      name.includes("realme") ||
+      name.includes("huawei") ||
+      name.includes("nokia") ||
+      name.includes("oneplus") ||
+      name.includes("motorola") ||
+      name.includes("moto") ||
+      name.includes("lg") ||
+      name.includes("htc") ||
+      name.includes("oppo") ||
+      name.includes("apple")
     ) {
       return "phone"
     } else if (
@@ -1073,6 +1084,10 @@ export default function BluetoothCenter() {
       name.includes("asus") ||
       name.includes("acer") ||
       name.includes("thinkpad") ||
+      name.includes("chromebook") ||
+      name.includes("chromeos") ||
+      name.includes("desktop") ||
+      name.includes("windows") ||
       name.includes("surface")
     ) {
       return "laptop"
@@ -1084,7 +1099,10 @@ export default function BluetoothCenter() {
       name.includes("xbox") ||
       name.includes("playstation") ||
       name.includes("ps4") ||
-      name.includes("ps5")
+      name.includes("ps5") ||
+      name.includes("ps6") ||
+      name.includes("switch") ||
+      name.includes("nintendo")
     ) {
       return "gamepad"
     } else if (name.includes("mouse")) {
@@ -2887,8 +2905,8 @@ const parseInitialChunk = (
                 </Badge>
               </div>
 
-              {/* PWA Install / Abrir App */}
-              {isClient && !isStandalone && (
+              {/* PWA Install / Abrir App - Apenas em desktop */}
+              {isClient && !isStandalone && typeof window !== 'undefined' && !/android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent) && (
                 <PwaInstallButton />
               )}
             </div>

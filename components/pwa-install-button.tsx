@@ -100,11 +100,11 @@ export default function PwaInstallButton() {
   };
 
 
-  // Mostrar botão universalmente (mobile e desktop):
-  // 1. Se não está instalado, mostrar "Instalar App" quando isVisible OU quando for mobile (sempre que possível)
-  // 2. Se está instalado mas não está em standalone, mostrar "Abrir App" (mobile e desktop)
-  // 3. Nunca mostrar se está em standalone
-  if (!isClient || isStandalone) {
+  // Verificar se é mobile
+  const isMobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+
+  // Não mostrar nada se não estiver no cliente, se estiver em modo standalone ou se for mobile
+  if (!isClient || isStandalone || isMobile) {
     return null;
   }
 
@@ -126,10 +126,10 @@ export default function PwaInstallButton() {
     );
   }
 
-  // Mostrar "Instalar App" se não está instalado e prompt disponível
-  if (!isInstalled && (isVisible || /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent))) {
+  // Mostrar "Instalar App" apenas em desktop
+  if (!isInstalled && isVisible) {
     return (
-      <div className="flex flex-col items-center w-full max-w-xs mx-auto gap-1">
+      <div className="flex flex-col items-center w-full max-w-xs mx-auto gap-2">
         <Button
           onClick={handleInstallClick}
           variant="default"
@@ -139,7 +139,9 @@ export default function PwaInstallButton() {
           <BluetoothLogo style={{ width: 18, height: 18 }} />
           <span className="inline">Instalar App</span>
         </Button>
-        <span className="text-xs text-center text-muted-foreground max-w-full break-words sm:hidden">Instale o app para uma experiência completa no seu dispositivo.</span>
+        <div className="text-xs text-center text-muted-foreground max-w-xs">
+          Para instalar o app, clique no botão acima e siga as instruções do seu navegador.
+        </div>
       </div>
     );
   }

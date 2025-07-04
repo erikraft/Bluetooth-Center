@@ -3123,7 +3123,7 @@ const parseInitialChunk = (
                             <div className={`p-3 sm:p-4 rounded-xl border-2 ${device.connected ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200' : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200'}`}>
                               <div className="flex items-start justify-between mb-2 sm:mb-3">
                                 <div className="flex items-center gap-2 sm:gap-3">
-                                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${device.connected ? 'bg-green-500' : 'bg-gray-400'}`}> 
+                                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${device.connected ? 'bg-green-500' : 'bg-gray-400'}`}>
                                     <DeviceIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                                   </div>
                                   <div>

@@ -118,11 +118,11 @@ const OFFLINE_FALLBACK_PAGE = `
     <div class="icon">📱</div>
     <h1>Bluetooth Center</h1>
     <p>Você está offline, mas o app ainda funciona!</p>
-    
+
     <div class="status" id="status">
       🔍 Verificando conexão...
     </div>
-    
+
     <div class="features">
       <div class="feature">
         ✅ Gerenciar dispositivos Bluetooth
@@ -137,15 +137,15 @@ const OFFLINE_FALLBACK_PAGE = `
         ✅ Jogos com controle
       </div>
     </div>
-    
+
     <div class="install-hint">
       💡 <strong>Dica:</strong> Instale este app na sua tela inicial para acesso rápido!
     </div>
-    
+
     <button class="retry-btn" onclick="window.location.reload()">
       🔄 Tentar Novamente
     </button>
-    
+
     <p style="font-size: 12px; margin-top: 20px; opacity: 0.7;">
       Este app funciona 100% offline após o primeiro carregamento
     </p>

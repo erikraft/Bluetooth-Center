@@ -100,8 +100,10 @@ export default function PwaInstallButton() {
   };
 
 
-  // Verificar se é mobile
-  const isMobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+  // Verificar se é mobile apenas no client para evitar erro em SSR
+  const isMobile =
+    typeof navigator !== "undefined" &&
+    /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
 
   // Não mostrar nada se não estiver no cliente, se estiver em modo standalone ou se for mobile
   if (!isClient || isStandalone || isMobile) {

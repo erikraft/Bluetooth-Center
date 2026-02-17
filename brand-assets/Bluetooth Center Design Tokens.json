@@ -1,0 +1,25 @@
+﻿{
+  "project": "Bluetooth Center",
+  "version": "2026.02.17",
+  "theme": {
+    "font": "Space Grotesk",
+    "background": "radial-gradient(circle_at_15%_10%, #1e293b 0%, #0f172a 45%, #020617 100%)",
+    "surface": "rgba(255,255,255,0.04)",
+    "border": "rgba(255,255,255,0.10)",
+    "primary": "#22d3ee",
+    "success": "#34d399",
+    "warning": "#facc15",
+    "danger": "#f87171"
+  },
+  "terminal": {
+    "container": "flex-1 w-full max-w-lg",
+    "shell": "bg-[#0c0c0c] border border-white/10 shadow-2xl shadow-emerald-900/10 rounded-xl overflow-hidden",
+    "header": "bg-[#1a1a1a] border-b border-white/5",
+    "content": "p-6 font-mono text-sm h-[26rem] overflow-y-auto custom-scrollbar"
+  },
+  "animation": {
+    "engine": "GSAP",
+    "style": "smooth-fade-up",
+    "scrollTrigger": true
+  }
+}

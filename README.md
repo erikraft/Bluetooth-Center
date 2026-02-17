@@ -18,6 +18,15 @@ This is a modern **Web Bluetooth application** that allows you to:
 
 > <img src="brand-assets\Use Bluetooth Web System.svg" align="right" width="175"> ⚠️ This project uses the experimental **Web Bluetooth API**, which only works on supported browsers like **Chrome** and only under **HTTPS** or `localhost`.
 
+## Run locally
+
+```bash
+pnpm install
+pnpm run dev
+```
+
+Then open `http://localhost:3000`.
+
 ---
 
 ## 🔧 Features

@@ -16,6 +16,15 @@ Il s'agit d'une application **Web Bluetooth** moderne qui permet :
 
 > <img src="brand-assets\Use Bluetooth Web System.svg" align="right" width="175"> ⚠️ Ce projet utilise l'API **Web Bluetooth** expérimentale, qui ne fonctionne que sur certains navigateurs comme **Chrome**, et uniquement sous **HTTPS** ou `localhost`.
 
+## Exécuter en local
+
+```bash
+pnpm install
+pnpm run dev
+```
+
+Ensuite, ouvrez `http://localhost:3000`.
+
 ---
 
 ## 🔧 Fonctionnalités

@@ -1,6 +1,6 @@
-"use client"
+﻿"use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -15,189 +15,238 @@ interface SnakeGameProps {
   active: boolean
 }
 
+const BOARD_SIZE = 20
+const INITIAL_SNAKE: Position[] = [{ x: 10, y: 10 }]
+const INITIAL_DIRECTION: Position = { x: 0, y: -1 }
+
+function isSamePosition(a: Position, b: Position): boolean {
+  return a.x === b.x && a.y === b.y
+}
+
+function isOppositeDirection(current: Position, next: Position): boolean {
+  return current.x + next.x === 0 && current.y + next.y === 0
+}
+
+function getRandomFood(snake: Position[]): Position {
+  let candidate: Position = { x: 0, y: 0 }
+  let valid = false
+
+  while (!valid) {
+    candidate = {
+      x: Math.floor(Math.random() * BOARD_SIZE),
+      y: Math.floor(Math.random() * BOARD_SIZE),
+    }
+    valid = !snake.some((segment) => isSamePosition(segment, candidate))
+  }
+
+  return candidate
+}
+
 export function SnakeGame({ gamepadIndex, onScoreChange, active }: SnakeGameProps) {
-  const [snake, setSnake] = useState<Position[]>([{ x: 10, y: 10 }])
+  const [snake, setSnake] = useState<Position[]>(INITIAL_SNAKE)
   const [food, setFood] = useState<Position>({ x: 15, y: 15 })
-  const [direction, setDirection] = useState<Position>({ x: 0, y: -1 })
+  const [direction, setDirection] = useState<Position>(INITIAL_DIRECTION)
   const [gameOver, setGameOver] = useState(false)
   const [score, setScore] = useState(0)
   const [gameStarted, setGameStarted] = useState(false)
 
-  const BOARD_SIZE = 20
-
-  const generateFood = useCallback((): Position => {
-    return {
-      x: Math.floor(Math.random() * BOARD_SIZE),
-      y: Math.floor(Math.random() * BOARD_SIZE),
-    }
+  const setDirectionSafe = useCallback((next: Position) => {
+    setDirection((prev) => (isOppositeDirection(prev, next) ? prev : next))
   }, [])
 
   const resetGame = useCallback(() => {
-    setSnake([{ x: 10, y: 10 }])
-    setFood(generateFood())
-    setDirection({ x: 0, y: -1 })
+    setSnake(INITIAL_SNAKE)
+    setDirection(INITIAL_DIRECTION)
     setGameOver(false)
     setScore(0)
     setGameStarted(true)
     onScoreChange(0)
-  }, [generateFood, onScoreChange])
+    setFood(getRandomFood(INITIAL_SNAKE))
+  }, [onScoreChange])
 
   const checkGamepadInput = useCallback(() => {
     if (typeof gamepadIndex === "undefined") return
 
-    const gamepads = navigator.getGamepads()
-    const gamepad = gamepads[gamepadIndex]
-
+    const gamepad = navigator.getGamepads()[gamepadIndex]
     if (!gamepad) return
 
-    // D-pad controls (buttons 12-15)
     if (gamepad.buttons[12]?.pressed) {
-      // D-pad Up
-      setDirection((prev) => (prev.y === 0 ? { x: 0, y: -1 } : prev))
+      setDirectionSafe({ x: 0, y: -1 })
     } else if (gamepad.buttons[13]?.pressed) {
-      // D-pad Down
-      setDirection((prev) => (prev.y === 0 ? { x: 0, y: 1 } : prev))
+      setDirectionSafe({ x: 0, y: 1 })
     } else if (gamepad.buttons[14]?.pressed) {
-      // D-pad Left
-      setDirection((prev) => (prev.x === 0 ? { x: -1, y: 0 } : prev))
+      setDirectionSafe({ x: -1, y: 0 })
     } else if (gamepad.buttons[15]?.pressed) {
-      // D-pad Right
-      setDirection((prev) => (prev.x === 0 ? { x: 1, y: 0 } : prev))
+      setDirectionSafe({ x: 1, y: 0 })
     }
 
-    // Left analog stick
-    const leftX = gamepad.axes[0]
-    const leftY = gamepad.axes[1]
+    const leftX = gamepad.axes[0] ?? 0
+    const leftY = gamepad.axes[1] ?? 0
 
-    if (Math.abs(leftX) > 0.5 || Math.abs(leftY) > 0.5) {
+    if (Math.abs(leftX) > 0.55 || Math.abs(leftY) > 0.55) {
       if (Math.abs(leftX) > Math.abs(leftY)) {
-        // Horizontal movement
-        if (leftX > 0.5) {
-          setDirection((prev) => (prev.x === 0 ? { x: 1, y: 0 } : prev))
-        } else if (leftX < -0.5) {
-          setDirection((prev) => (prev.x === 0 ? { x: -1, y: 0 } : prev))
-        }
+        setDirectionSafe(leftX > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 })
       } else {
-        // Vertical movement
-        if (leftY > 0.5) {
-          setDirection((prev) => (prev.y === 0 ? { x: 0, y: 1 } : prev))
-        } else if (leftY < -0.5) {
-          setDirection((prev) => (prev.y === 0 ? { x: 0, y: -1 } : prev))
-        }
+        setDirectionSafe(leftY > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 })
       }
     }
 
-    // A button to start/restart
     if (gamepad.buttons[0]?.pressed && (gameOver || !gameStarted)) {
       resetGame()
     }
-  }, [gamepadIndex, gameOver, gameStarted, resetGame])
+  }, [gamepadIndex, gameOver, gameStarted, resetGame, setDirectionSafe])
 
   useEffect(() => {
     if (!active) return
 
-    const gamepadInterval = setInterval(checkGamepadInput, 100)
-    return () => clearInterval(gamepadInterval)
+    const onKeyDown = (event: KeyboardEvent) => {
+      switch (event.key) {
+        case "ArrowUp":
+        case "w":
+        case "W":
+          event.preventDefault()
+          setDirectionSafe({ x: 0, y: -1 })
+          break
+        case "ArrowDown":
+        case "s":
+        case "S":
+          event.preventDefault()
+          setDirectionSafe({ x: 0, y: 1 })
+          break
+        case "ArrowLeft":
+        case "a":
+        case "A":
+          event.preventDefault()
+          setDirectionSafe({ x: -1, y: 0 })
+          break
+        case "ArrowRight":
+        case "d":
+        case "D":
+          event.preventDefault()
+          setDirectionSafe({ x: 1, y: 0 })
+          break
+        case " ":
+        case "Enter":
+          if (gameOver || !gameStarted) {
+            event.preventDefault()
+            resetGame()
+          }
+          break
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [active, gameOver, gameStarted, resetGame, setDirectionSafe])
+
+  useEffect(() => {
+    if (!active) return
+
+    const gamepadInterval = window.setInterval(checkGamepadInput, 90)
+    return () => window.clearInterval(gamepadInterval)
   }, [active, checkGamepadInput])
 
   useEffect(() => {
     if (!active || !gameStarted || gameOver) return
 
-    const gameInterval = setInterval(() => {
+    const gameInterval = window.setInterval(() => {
       setSnake((currentSnake) => {
-        const newSnake = [...currentSnake]
-        const head = { ...newSnake[0] }
+        const head = currentSnake[0]
+        const newHead = { x: head.x + direction.x, y: head.y + direction.y }
 
-        head.x += direction.x
-        head.y += direction.y
-
-        // Check wall collision
-        if (head.x < 0 || head.x >= BOARD_SIZE || head.y < 0 || head.y >= BOARD_SIZE) {
+        if (newHead.x < 0 || newHead.x >= BOARD_SIZE || newHead.y < 0 || newHead.y >= BOARD_SIZE) {
           setGameOver(true)
           return currentSnake
         }
 
-        // Check self collision
-        if (newSnake.some((segment) => segment.x === head.x && segment.y === head.y)) {
+        if (currentSnake.some((segment) => isSamePosition(segment, newHead))) {
           setGameOver(true)
           return currentSnake
         }
 
-        newSnake.unshift(head)
+        const grew = isSamePosition(newHead, food)
+        const nextSnake = [newHead, ...currentSnake]
 
-        // Check food collision
-        if (head.x === food.x && head.y === food.y) {
-          setFood(generateFood())
-          setScore((prev) => {
-            const newScore = prev + 10
-            onScoreChange(newScore)
-            return newScore
-          })
+        if (!grew) {
+          nextSnake.pop()
         } else {
-          newSnake.pop()
+          const newScore = score + 10
+          setScore(newScore)
+          onScoreChange(newScore)
+          setFood(getRandomFood(nextSnake))
         }
 
-        return newSnake
+        return nextSnake
       })
-    }, 200)
+    }, 140)
 
-    return () => clearInterval(gameInterval)
-  }, [active, gameStarted, gameOver, direction, food, generateFood, onScoreChange])
+    return () => window.clearInterval(gameInterval)
+  }, [active, gameStarted, gameOver, direction, food, onScoreChange, score])
+
+  const cells = useMemo(() => Array.from({ length: BOARD_SIZE * BOARD_SIZE }), [])
 
   if (!active) return null
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="mx-auto w-full max-w-md border-white/10 bg-slate-950/70 text-slate-100">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center justify-between">
-          🐍 Snake Game
-          <span className="text-sm font-normal">Score: {score}</span>
+        <CardTitle className="flex items-center justify-between text-lg">
+          Snake Arena
+          <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-200">
+            Score: {score}
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {!gameStarted || gameOver ? (
-            <div className="text-center space-y-2">
-              {gameOver && <p className="text-red-600 font-semibold">Game Over!</p>}
-              <p className="text-sm text-gray-600">
-                {gamepadIndex !== undefined ? "Pressione A no controle para começar" : "Conecte um controle para jogar"}
+            <div className="space-y-2 text-center">
+              {gameOver && <p className="font-semibold text-red-300">Game Over!</p>}
+              <p className="text-sm text-slate-300">
+                {gamepadIndex !== undefined
+                  ? "Pressione A no controle ou Enter para comecar"
+                  : "Conecte um controle ou use teclado (setas/WASD)"}
               </p>
-              <Button onClick={resetGame} size="sm">
-                {gameOver ? "Jogar Novamente" : "Começar"}
+              <Button onClick={resetGame} size="sm" className="bg-emerald-600 hover:bg-emerald-500">
+                {gameOver ? "Jogar Novamente" : "Comecar"}
               </Button>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div
-                className="grid bg-gray-100 border-2 border-gray-300 mx-auto"
+                className="mx-auto grid rounded-xl border border-cyan-300/20 bg-slate-900 p-1 shadow-[0_0_30px_rgba(6,182,212,0.15)]"
                 style={{
                   gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)`,
-                  width: "300px",
-                  height: "300px",
+                  width: "320px",
+                  height: "320px",
                 }}
               >
-                {Array.from({ length: BOARD_SIZE * BOARD_SIZE }).map((_, index) => {
+                {cells.map((_, index) => {
                   const x = index % BOARD_SIZE
                   const y = Math.floor(index / BOARD_SIZE)
-                  const isSnake = snake.some((segment) => segment.x === x && segment.y === y)
-                  const isFood = food.x === x && food.y === y
                   const isHead = snake[0]?.x === x && snake[0]?.y === y
+                  const isBody = snake.slice(1).some((segment) => segment.x === x && segment.y === y)
+                  const isFoodCell = food.x === x && food.y === y
 
                   return (
                     <div
-                      key={index}
-                      className={`border border-gray-200 ${
-                        isHead ? "bg-green-600" : isSnake ? "bg-green-400" : isFood ? "bg-red-500" : "bg-white"
+                      key={`${x}-${y}`}
+                      className={`rounded-[2px] ${
+                        isHead
+                          ? "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]"
+                          : isBody
+                            ? "bg-emerald-500/90"
+                            : isFoodCell
+                              ? "bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.8)]"
+                              : "bg-slate-800/60"
                       }`}
-                    >
-                      {isFood && <span className="text-xs">🍎</span>}
-                    </div>
+                    />
                   )
                 })}
               </div>
-              <div className="text-center text-xs text-gray-600">
-                <p>Use D-pad ou analógico esquerdo para mover</p>
-                <p>Colete as maçãs e evite as paredes!</p>
+              <div className="text-center text-xs text-slate-400">
+                <p>Controle: D-pad / analogico esquerdo / teclas direcionais</p>
+                <p>Comandos: A ou Enter para reiniciar quando terminar</p>
               </div>
             </div>
           )}

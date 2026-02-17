@@ -16,6 +16,15 @@
 
 > <img src="brand-assets\Use Bluetooth Web System.svg" align="right" width="175"> ⚠️ 本项目使用实验性的 **Web 蓝牙 API**，仅在支持的浏览器（如 **Chrome**）且在 **HTTPS** 或 `localhost` 下可用。
 
+## 本地运行
+
+```bash
+pnpm install
+pnpm run dev
+```
+
+然后打开 `http://localhost:3000`。
+
 ---
 
 ## 🔧 功能

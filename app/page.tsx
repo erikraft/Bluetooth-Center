@@ -2,26 +2,34 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
+  BatteryMedium,
   Bluetooth,
+  Clock3,
   Gamepad2,
+  HeartPulse,
+  Keyboard,
   Link2,
   LoaderCircle,
+  MousePointer2,
   MonitorSmartphone,
   Plug2,
   RefreshCw,
   Unplug,
   Upload,
+  X,
 } from "lucide-react";
 import { BluetoothHero } from "@/components/bluetooth/bluetooth-hero";
 import { BluetoothModules } from "@/components/bluetooth/bluetooth-modules";
 import { BluetoothTerminal } from "@/components/bluetooth/bluetooth-terminal";
 import { BluetoothUuidBank } from "@/components/bluetooth/bluetooth-uuid-bank";
+import { collectGattTelemetry, type GattTelemetrySnapshot } from "@/components/bluetooth/gatt-telemetry";
 import { BluetoothDeviceEntry, TerminalLog, TransferEntry } from "@/components/bluetooth/types";
 import { useGsapBluetoothAnimations } from "@/components/bluetooth/use-gsap-bluetooth";
 import { ALL_BLUETOOTH_UUIDS, BLUETOOTH_SERVICE_UUIDS, createRuntimeUuids } from "@/lib/bluetooth-uuids";
 import {
   autoDetectBluetoothDevice,
   DEVICE_PROFILES,
+  type DeviceProfileType,
   detectDeviceProfile,
   GamepadProfile,
   getBluetoothEnvironmentReport,
@@ -38,6 +46,16 @@ function getUuid(): string {
 
 function nowTime(): string {
   return new Date().toLocaleTimeString("pt-BR", { hour12: false });
+}
+
+const MAX_UUID_TOTAL = 1_150_165;
+const HEART_RATE_SERVICE = "0000180d-0000-1000-8000-00805f9b34fb";
+const BATTERY_SERVICE = "0000180f-0000-1000-8000-00805f9b34fb";
+const CURRENT_TIME_SERVICE = "00001805-0000-1000-8000-00805f9b34fb";
+const HID_SERVICE = "00001812-0000-1000-8000-00805f9b34fb";
+
+function getRuntimeUuidTarget(): number {
+  return Math.max(0, MAX_UUID_TOTAL - ALL_BLUETOOTH_UUIDS.length);
 }
 
 export default function Page() {
@@ -58,6 +76,8 @@ export default function Page() {
   const [gamepads, setGamepads] = useState<GamepadProfile[]>([]);
   const [snakeActive, setSnakeActive] = useState(false);
   const [snakeScore, setSnakeScore] = useState(0);
+  const [environmentReport, setEnvironmentReport] = useState(() => getBluetoothEnvironmentReport());
+  const [telemetryByDeviceId, setTelemetryByDeviceId] = useState<Record<string, GattTelemetrySnapshot>>({});
 
   const allUuids = useMemo(() => [...ALL_BLUETOOTH_UUIDS, ...runtimeUuids], [runtimeUuids]);
 
@@ -77,6 +97,75 @@ export default function Page() {
   );
 
   const activeGamepadIndex = connectedGamepads[0]?.index;
+  const selectedTelemetry = selectedDevice ? telemetryByDeviceId[selectedDevice.id] : undefined;
+
+  const selectedDeviceInsights = useMemo(() => {
+    if (!selectedDevice) return null;
+
+    const profileType: DeviceProfileType = selectedDevice.profileType;
+    const discoveredServices = new Set(selectedDevice.discoveredServices.map((service) => service.toLowerCase()));
+    const flags = new Set(selectedDevice.capabilityFlags);
+    const hasHeartRate = discoveredServices.has(HEART_RATE_SERVICE) || flags.has("HeartRate");
+    const hasBattery = discoveredServices.has(BATTERY_SERVICE) || flags.has("Battery");
+    const hasCurrentTime = discoveredServices.has(CURRENT_TIME_SERVICE) || flags.has("CurrentTime");
+    const hasHid = discoveredServices.has(HID_SERVICE) || flags.has("HID");
+    const isController =
+      profileType === "xbox-controller" ||
+      profileType === "playstation-controller" ||
+      profileType === "nintendo-controller" ||
+      profileType === "universal-controller";
+
+    const availableData: string[] = [];
+    const actions: string[] = [];
+    const constraints: string[] = [];
+
+    if (hasCurrentTime) availableData.push("Hora do dispositivo (Current Time Service)");
+    if (hasHeartRate) availableData.push("Batimento cardiaco (Heart Rate Service)");
+    if (hasBattery) availableData.push("Bateria (Battery Service)");
+    if (typeof selectedTelemetry?.batteryLevel === "number") {
+      availableData.push(`Bateria em tempo real: ${selectedTelemetry.batteryLevel}%`);
+    }
+    if (typeof selectedTelemetry?.heartRateBpm === "number") {
+      availableData.push(`Batimento em tempo real: ${selectedTelemetry.heartRateBpm} bpm`);
+    }
+    if (selectedTelemetry?.deviceTime) {
+      availableData.push(`Hora lida do dispositivo: ${selectedTelemetry.deviceTime}`);
+    }
+
+    if (profileType === "smartwatch") {
+      constraints.push("Exercicio, agua e calorias dependem de servicos proprietarios do fabricante.");
+      constraints.push("Sem caracteristica GATT exposta, esses dados nao ficam disponiveis no navegador.");
+      if (!selectedTelemetry || selectedTelemetry.readableSamples.length === 0) {
+        constraints.push("Este relogio nao expôs caracteristicas legiveis para dados extras no Web Bluetooth.");
+      }
+    }
+
+    if (profileType === "tv" || profileType === "tv-remote") {
+      if (hasHid) {
+        actions.push("Navegacao basica tipo controle remoto via HID");
+      }
+      constraints.push("Ligar/desligar TV por Bluetooth depende de API/servico proprietario do fabricante.");
+      constraints.push("Teclado e mouse virtual exigem pareamento HID real no dispositivo de destino.");
+    }
+
+    if (isController) {
+      if (environmentReport.gamepadApi) {
+        actions.push("Teste de botoes/eixos via Gamepad API");
+        actions.push("Jogar Snake para validar comandos");
+      } else {
+        constraints.push("Gamepad API indisponivel neste navegador.");
+      }
+    }
+
+    if (profileType === "laptop" || profileType === "tablet" || profileType === "phone") {
+      constraints.push("Web Bluetooth nao emula teclado/mouse virtual por conta propria.");
+      if (environmentReport.webHid) {
+        actions.push("WebHID disponivel para integrar perifericos HID compativeis");
+      }
+    }
+
+    return { availableData, actions, constraints };
+  }, [selectedDevice, selectedTelemetry, environmentReport.gamepadApi, environmentReport.webHid]);
 
   const addLog = (message: string, level: TerminalLog["level"] = "info") => {
     setLogs((current) => [
@@ -106,12 +195,14 @@ export default function Page() {
 
   useEffect(() => {
     setSupported(typeof navigator !== "undefined" && "bluetooth" in navigator);
-    setRuntimeUuids(createRuntimeUuids(250000));
+    const runtimeTarget = getRuntimeUuidTarget();
+    setRuntimeUuids(createRuntimeUuids(runtimeTarget));
     addLog("$ git checkout -b redesign/bluetooth-center", "command");
     addLog("Layout recarregado com base no template.", "success");
-    addLog("UUID bank iniciado com densidade extrema.", "info");
+    addLog(`UUID bank iniciado com densidade extrema (${MAX_UUID_TOTAL} total).`, "info");
     addLog("Dica de terminal: digite help para ver os comandos disponiveis.", "info");
     const env = getBluetoothEnvironmentReport();
+    setEnvironmentReport(env);
     addLog(
       `Detection Engine: BT=${env.webBluetooth} Gamepad=${env.gamepadApi} HID=${env.webHid} Serial=${env.webSerial}`,
       "info",
@@ -123,6 +214,12 @@ export default function Page() {
       setSnakeActive(false);
     }
   }, [connectedGamepads.length]);
+
+  useEffect(() => {
+    if (!selectedDevice || !selectedDevice.connected) return;
+    if (telemetryByDeviceId[selectedDevice.id]) return;
+    void refreshDeviceTelemetry(selectedDevice);
+  }, [selectedDevice, telemetryByDeviceId]);
 
   useEffect(() => {
     const unlock = () => {
@@ -196,6 +293,30 @@ export default function Page() {
           : device,
       ),
     );
+  };
+
+  const refreshDeviceTelemetry = async (device: BluetoothDeviceEntry) => {
+    try {
+      addLog(`Coletando telemetria GATT de ${device.name}...`, "info");
+      const snapshot = await collectGattTelemetry(device.nativeDevice);
+      setTelemetryByDeviceId((current) => ({
+        ...current,
+        [device.id]: snapshot,
+      }));
+
+      const summary: string[] = [];
+      if (typeof snapshot.batteryLevel === "number") summary.push(`battery=${snapshot.batteryLevel}%`);
+      if (typeof snapshot.heartRateBpm === "number") summary.push(`heart=${snapshot.heartRateBpm}bpm`);
+      if (snapshot.deviceTime) summary.push(`time=${snapshot.deviceTime}`);
+      summary.push(`services=${snapshot.serviceCount}`);
+      summary.push(`chars=${snapshot.characteristicCount}`);
+
+      addLog(`Telemetria atualizada: ${summary.join(" | ")}`, "success");
+      snapshot.warnings.forEach((warning) => addLog(`Telemetria: ${warning}`, "warning"));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha ao coletar telemetria.";
+      addLog(`Telemetria falhou: ${message}`, "error");
+    }
   };
 
   const scanDevice = async () => {
@@ -311,6 +432,7 @@ export default function Page() {
         ),
       );
       syncDeviceConnection(selectedDevice.nativeDevice, true);
+      await refreshDeviceTelemetry(selectedDevice);
       playAudio("connected");
       addLog(
         `Conexao ativa com ${selectedDevice.name} | perfil=${detection.profile.title} | servicos=${detection.discoveredServices.length}`,
@@ -338,6 +460,10 @@ export default function Page() {
     syncDeviceConnection(selectedDevice.nativeDevice, false);
     playAudio("disconnected");
     addLog(`Desconectado de ${selectedDevice.name}.`, "warning");
+  };
+
+  const dismissTransfer = (transferId: string) => {
+    setTransfers((current) => current.filter((item) => item.id !== transferId));
   };
 
   const handleFiles = (event: ChangeEvent<HTMLInputElement>) => {
@@ -524,6 +650,122 @@ export default function Page() {
               )}
             </div>
 
+            {selectedDevice && selectedDeviceInsights && (
+              <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-sm text-slate-300">Compatibilidade Veridica</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void refreshDeviceTelemetry(selectedDevice);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-md border border-cyan-300/30 bg-cyan-400/10 px-2 py-1 text-[10px] text-cyan-100 transition hover:bg-cyan-400/20"
+                  >
+                    <RefreshCw className="h-3 w-3" /> Atualizar Dados Reais
+                  </button>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Perfil detectado: <span className="text-slate-200">{selectedDevice.profileTitle}</span>
+                </p>
+                {selectedTelemetry && (
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    GATT: {selectedTelemetry.serviceCount} servicos, {selectedTelemetry.characteristicCount} caracteristicas
+                  </p>
+                )}
+
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                    <p className="mb-2 text-xs font-medium text-slate-200">Dados disponiveis agora</p>
+                    {selectedDeviceInsights.availableData.length === 0 && (
+                      <p className="text-xs text-slate-400">Nenhum dado padrao detectado por GATT neste momento.</p>
+                    )}
+                    {selectedDeviceInsights.availableData.length > 0 && (
+                      <div className="space-y-1 text-xs text-slate-300">
+                        {selectedDeviceInsights.availableData.map((item) => (
+                          <p key={item}>{item}</p>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {selectedDevice.capabilityFlags.includes("CurrentTime") && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/30 bg-cyan-400/10 px-2 py-0.5 text-[10px] text-cyan-200">
+                          <Clock3 className="h-3 w-3" /> Hora
+                        </span>
+                      )}
+                      {selectedDevice.capabilityFlags.includes("HeartRate") && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-rose-300/30 bg-rose-400/10 px-2 py-0.5 text-[10px] text-rose-200">
+                          <HeartPulse className="h-3 w-3" /> Batimento
+                        </span>
+                      )}
+                      {selectedDevice.capabilityFlags.includes("Battery") && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-200">
+                          <BatteryMedium className="h-3 w-3" /> Bateria
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                    <p className="mb-2 text-xs font-medium text-slate-200">Acoes compativeis</p>
+                    {selectedDeviceInsights.actions.length === 0 && (
+                      <p className="text-xs text-slate-400">Sem acao automatica disponivel para este perfil no browser atual.</p>
+                    )}
+                    {selectedDeviceInsights.actions.length > 0 && (
+                      <div className="space-y-1 text-xs text-slate-300">
+                        {selectedDeviceInsights.actions.map((item) => (
+                          <p key={item}>{item}</p>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {environmentReport.webHid && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-indigo-300/30 bg-indigo-400/10 px-2 py-0.5 text-[10px] text-indigo-200">
+                          <Keyboard className="h-3 w-3" /> WebHID
+                        </span>
+                      )}
+                      {environmentReport.webHid && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-indigo-300/30 bg-indigo-400/10 px-2 py-0.5 text-[10px] text-indigo-200">
+                          <MousePointer2 className="h-3 w-3" /> HID Pointer
+                        </span>
+                      )}
+                      {environmentReport.gamepadApi && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-violet-300/30 bg-violet-400/10 px-2 py-0.5 text-[10px] text-violet-200">
+                          <Gamepad2 className="h-3 w-3" /> Gamepad API
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {selectedDeviceInsights.constraints.length > 0 && (
+                  <div className="mt-3 rounded-lg border border-amber-300/20 bg-amber-500/5 p-3 text-xs text-amber-100">
+                    {selectedDeviceInsights.constraints.map((item) => (
+                      <p key={item}>{item}</p>
+                    ))}
+                  </div>
+                )}
+
+                {selectedTelemetry && selectedTelemetry.readableSamples.length > 0 && (
+                  <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                    <p className="mb-2 text-xs font-medium text-slate-200">Amostras GATT lidas</p>
+                    <div className="space-y-1">
+                      {selectedTelemetry.readableSamples.map((sample) => (
+                        <p key={`${sample.serviceUuid}-${sample.characteristicUuid}`} className="text-[11px] text-slate-300">
+                          {sample.label}: {sample.value}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedTelemetry?.supportsHeartRateNotify && typeof selectedTelemetry.heartRateBpm !== "number" && (
+                  <p className="mt-2 text-[11px] text-slate-400">
+                    Este dispositivo suporta notificacao de batimento, mas nao retornou leitura instantanea por `read`.
+                  </p>
+                )}
+              </div>
+            )}
+
             {connectedGamepads.length > 0 && (
               <div className="rounded-xl border border-white/10 bg-black/20 p-4">
                 <div className="mb-2 flex items-center gap-2 text-sm text-slate-200">
@@ -580,19 +822,32 @@ export default function Page() {
                       <p className="max-w-full break-all text-[13px] font-medium text-slate-100 sm:text-xs">
                         {transfer.fileName}
                       </p>
-                      <span
-                        className={`inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${
-                          transfer.status === "done"
-                            ? "border-emerald-300/40 bg-emerald-400/10 text-emerald-200"
-                            : transfer.status === "transferring"
-                              ? "border-cyan-300/40 bg-cyan-400/10 text-cyan-200"
-                              : transfer.status === "error"
-                                ? "border-red-300/40 bg-red-400/10 text-red-200"
-                                : "border-amber-300/40 bg-amber-400/10 text-amber-200"
-                        }`}
-                      >
-                        {transfer.status}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                            transfer.status === "done"
+                              ? "border-emerald-300/40 bg-emerald-400/10 text-emerald-200"
+                              : transfer.status === "transferring"
+                                ? "border-cyan-300/40 bg-cyan-400/10 text-cyan-200"
+                                : transfer.status === "error"
+                                  ? "border-red-300/40 bg-red-400/10 text-red-200"
+                                  : "border-amber-300/40 bg-amber-400/10 text-amber-200"
+                          }`}
+                        >
+                          {transfer.status}
+                        </span>
+                        {transfer.status === "done" && (
+                          <button
+                            type="button"
+                            onClick={() => dismissTransfer(transfer.id)}
+                            className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/20 bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white"
+                            aria-label={`Remover transferencia ${transfer.fileName}`}
+                            title="Fechar transferencia"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="h-2.5 overflow-hidden rounded bg-white/10 sm:h-2">
                       <div className="h-full rounded bg-emerald-400" style={{ width: `${transfer.progress}%` }} />

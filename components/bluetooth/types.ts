@@ -1,4 +1,6 @@
-﻿export type LogLevel = "info" | "success" | "warning" | "error" | "command";
+import type { DeviceProfileType } from "./device-profiles";
+
+export type LogLevel = "info" | "success" | "warning" | "error" | "command";
 
 export interface TerminalLog {
   id: string;
@@ -11,7 +13,7 @@ export interface BluetoothDeviceEntry {
   id: string;
   name: string;
   profileTitle: string;
-  profileType: string;
+  profileType: DeviceProfileType;
   detectionConfidence: number;
   detectionReasons: string[];
   discoveredServices: string[];

@@ -86,7 +86,7 @@ export const DEVICE_PROFILES: DeviceProfile[] = [
     id: "profile-tv",
     title: "Smart TV",
     type: "tv",
-    keywords: ["tv", "smart tv", "android tv", "webos", "tizen", "chromecast"],
+    keywords: ["tv", "smart tv", "android tv", "webos", "tizen", "chromecast", "roku", "bravia", "fire tv"],
     features: ["Media playback", "Cast target", "Remote pairing"],
   },
   {
@@ -114,7 +114,7 @@ export const DEVICE_PROFILES: DeviceProfile[] = [
     id: "profile-watch",
     title: "Smartwatch",
     type: "smartwatch",
-    keywords: ["watch", "wear", "smartwatch", "fit"],
+    keywords: ["watch", "wear", "smartwatch", "fit", "fitbit", "amazfit", "galaxy watch", "mi band", "garmin"],
     features: ["Health telemetry", "Notifications", "Sensors"],
   },
   {
@@ -181,11 +181,15 @@ const SERVICE_SIGNATURES: Record<DeviceProfileType, string[]> = {
   "playstation-controller": ["00001812-0000-1000-8000-00805f9b34fb"],
   "nintendo-controller": ["00001812-0000-1000-8000-00805f9b34fb"],
   "universal-controller": ["00001812-0000-1000-8000-00805f9b34fb"],
-  tv: ["0000180a-0000-1000-8000-00805f9b34fb"],
+  tv: [],
   "tv-remote": ["00001812-0000-1000-8000-00805f9b34fb"],
   headphones: ["0000110b-0000-1000-8000-00805f9b34fb", "0000110e-0000-1000-8000-00805f9b34fb"],
   speaker: ["0000110b-0000-1000-8000-00805f9b34fb"],
-  smartwatch: ["0000180d-0000-1000-8000-00805f9b34fb", "0000180f-0000-1000-8000-00805f9b34fb"],
+  smartwatch: [
+    "0000180d-0000-1000-8000-00805f9b34fb",
+    "0000180f-0000-1000-8000-00805f9b34fb",
+    "00001805-0000-1000-8000-00805f9b34fb",
+  ],
   keyboard: ["00001812-0000-1000-8000-00805f9b34fb"],
   mouse: ["00001812-0000-1000-8000-00805f9b34fb"],
   phone: ["00001800-0000-1000-8000-00805f9b34fb", "00001801-0000-1000-8000-00805f9b34fb"],
@@ -206,7 +210,19 @@ function profileByType(type: DeviceProfileType): DeviceProfile {
 
 export function detectDeviceProfile(name: string): DeviceProfile {
   const normalized = name.toLowerCase();
-  return DEVICE_PROFILES.find((profile) => profile.keywords.some((keyword) => normalized.includes(keyword))) ?? UNKNOWN_PROFILE;
+
+  let best: DeviceProfile = UNKNOWN_PROFILE;
+  let bestHits = 0;
+
+  DEVICE_PROFILES.forEach((profile) => {
+    const hits = profile.keywords.filter((keyword) => normalized.includes(keyword)).length;
+    if (hits > bestHits) {
+      best = profile;
+      bestHits = hits;
+    }
+  });
+
+  return best;
 }
 
 function scoreNameSignals(name: string, profile: DeviceProfile): number {
@@ -224,6 +240,10 @@ function scoreServiceSignals(services: string[], profileType: DeviceProfileType)
   if (matched === 0) return 0;
 
   return Math.min(0.2 + (matched / signatures.length) * 0.65, 0.92);
+}
+
+function hasService(services: string[], uuid: string): boolean {
+  return services.includes(uuid);
 }
 
 async function safeDiscoverServices(device: BluetoothDevice): Promise<{ discoveredServices: string[]; warnings: string[] }> {
@@ -303,8 +323,22 @@ export async function autoDetectBluetoothDevice(
       capabilityFlags.push("Battery");
     }
 
+    if (discoveredServices.some((uuid) => uuid === "00001805-0000-1000-8000-00805f9b34fb")) {
+      capabilityFlags.push("CurrentTime");
+    }
+
     if (discoveredServices.some((uuid) => uuid === "0000180d-0000-1000-8000-00805f9b34fb")) {
       capabilityFlags.push("HeartRate");
+    }
+
+    const healthSignals =
+      hasService(discoveredServices, "0000180d-0000-1000-8000-00805f9b34fb") ||
+      hasService(discoveredServices, "00001805-0000-1000-8000-00805f9b34fb");
+
+    if (healthSignals && bestProfile.type !== "smartwatch" && bestProfile.type !== "medical") {
+      bestProfile = profileByType("smartwatch");
+      bestScore = Math.max(bestScore, 0.74);
+      reasons.push("Sinal de servicos de saude/relogio detectado; perfil ajustado para Smartwatch.");
     }
   }
 

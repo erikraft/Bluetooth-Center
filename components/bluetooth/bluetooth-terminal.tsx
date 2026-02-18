@@ -221,9 +221,6 @@ export function BluetoothTerminal({
               placeholder="git status | bluetooth scan | help (digite help)"
               aria-label="Terminal command"
             />
-            <span className="terminal-caret" aria-hidden>
-              |
-            </span>
           </form>
           <p className="mt-1 text-[10px] text-slate-500 sm:text-xs">Dica: digite `help` para listar todos os comandos.</p>
         </div>

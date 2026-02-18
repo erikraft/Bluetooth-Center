@@ -17,13 +17,17 @@ export interface GattTelemetrySnapshot {
   warnings: string[];
 }
 
+export type MediaControlAction = "play" | "pause" | "next" | "previous";
+
 const SERVICE_BATTERY = "0000180f-0000-1000-8000-00805f9b34fb";
 const SERVICE_HEART_RATE = "0000180d-0000-1000-8000-00805f9b34fb";
 const SERVICE_CURRENT_TIME = "00001805-0000-1000-8000-00805f9b34fb";
+const SERVICE_MEDIA_CONTROL = "00001848-0000-1000-8000-00805f9b34fb";
 
 const CHAR_BATTERY_LEVEL = "00002a19-0000-1000-8000-00805f9b34fb";
 const CHAR_HEART_RATE_MEASUREMENT = "00002a37-0000-1000-8000-00805f9b34fb";
 const CHAR_CURRENT_TIME = "00002a2b-0000-1000-8000-00805f9b34fb";
+const CHAR_MEDIA_CONTROL_POINT = "00002ba4-0000-1000-8000-00805f9b34fb";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -190,4 +194,63 @@ export async function collectGattTelemetry(device: BluetoothDevice): Promise<Gat
     readableSamples: readableSamples.slice(0, 12),
     warnings: Array.from(new Set(warnings)).slice(0, 8),
   };
+}
+
+async function resolveMediaControlPoint(
+  device: BluetoothDevice,
+): Promise<{ characteristic: BluetoothRemoteGATTCharacteristic; shouldDisconnect: boolean } | null> {
+  if (!device.gatt) return null;
+
+  const shouldDisconnect = !device.gatt.connected;
+  const server = shouldDisconnect ? await device.gatt.connect() : device.gatt;
+  const service = await server.getPrimaryService(SERVICE_MEDIA_CONTROL);
+  const characteristic = await service.getCharacteristic(CHAR_MEDIA_CONTROL_POINT);
+  return { characteristic, shouldDisconnect };
+}
+
+function mediaOpcode(action: MediaControlAction): number {
+  switch (action) {
+    case "play":
+      return 0x01;
+    case "pause":
+      return 0x02;
+    case "next":
+      return 0x33;
+    case "previous":
+      return 0x32;
+    default:
+      return 0x01;
+  }
+}
+
+export async function sendBleMediaControl(device: BluetoothDevice, action: MediaControlAction): Promise<void> {
+  const resolved = await resolveMediaControlPoint(device);
+  if (!resolved) {
+    throw new Error("Dispositivo sem GATT para controle de midia.");
+  }
+
+  const { characteristic, shouldDisconnect } = resolved;
+  const payload = new Uint8Array([mediaOpcode(action)]);
+
+  try {
+    if ("writeValueWithResponse" in characteristic && typeof characteristic.writeValueWithResponse === "function") {
+      await characteristic.writeValueWithResponse(payload);
+      return;
+    }
+
+    if ("writeValueWithoutResponse" in characteristic && typeof characteristic.writeValueWithoutResponse === "function") {
+      await characteristic.writeValueWithoutResponse(payload);
+      return;
+    }
+
+    await characteristic.writeValue(payload);
+  } finally {
+    if (shouldDisconnect && device.gatt?.connected) {
+      try {
+        device.gatt.disconnect();
+      } catch {
+        // no-op
+      }
+    }
+  }
 }

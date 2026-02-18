@@ -12,8 +12,12 @@ import {
   LoaderCircle,
   MousePointer2,
   MonitorSmartphone,
+  Pause,
+  Play,
   Plug2,
   RefreshCw,
+  SkipBack,
+  SkipForward,
   Unplug,
   Upload,
   X,
@@ -22,7 +26,12 @@ import { BluetoothHero } from "@/components/bluetooth/bluetooth-hero";
 import { BluetoothModules } from "@/components/bluetooth/bluetooth-modules";
 import { BluetoothTerminal } from "@/components/bluetooth/bluetooth-terminal";
 import { BluetoothUuidBank } from "@/components/bluetooth/bluetooth-uuid-bank";
-import { collectGattTelemetry, type GattTelemetrySnapshot } from "@/components/bluetooth/gatt-telemetry";
+import {
+  collectGattTelemetry,
+  type GattTelemetrySnapshot,
+  type MediaControlAction,
+  sendBleMediaControl,
+} from "@/components/bluetooth/gatt-telemetry";
 import { BluetoothDeviceEntry, TerminalLog, TransferEntry } from "@/components/bluetooth/types";
 import { useGsapBluetoothAnimations } from "@/components/bluetooth/use-gsap-bluetooth";
 import { ALL_BLUETOOTH_UUIDS, BLUETOOTH_SERVICE_UUIDS, createRuntimeUuids } from "@/lib/bluetooth-uuids";
@@ -78,6 +87,9 @@ export default function Page() {
   const [snakeScore, setSnakeScore] = useState(0);
   const [environmentReport, setEnvironmentReport] = useState(() => getBluetoothEnvironmentReport());
   const [telemetryByDeviceId, setTelemetryByDeviceId] = useState<Record<string, GattTelemetrySnapshot>>({});
+  const [mediaControlBusy, setMediaControlBusy] = useState(false);
+  const telemetryInFlightRef = useRef<Record<string, boolean>>({});
+  const telemetryLastAttemptAtRef = useRef<Record<string, number>>({});
 
   const allUuids = useMemo(() => [...ALL_BLUETOOTH_UUIDS, ...runtimeUuids], [runtimeUuids]);
 
@@ -109,6 +121,7 @@ export default function Page() {
     const hasBattery = discoveredServices.has(BATTERY_SERVICE) || flags.has("Battery");
     const hasCurrentTime = discoveredServices.has(CURRENT_TIME_SERVICE) || flags.has("CurrentTime");
     const hasHid = discoveredServices.has(HID_SERVICE) || flags.has("HID");
+    const hasMediaControl = discoveredServices.has("00001848-0000-1000-8000-00805f9b34fb") || flags.has("MediaControl");
     const isController =
       profileType === "xbox-controller" ||
       profileType === "playstation-controller" ||
@@ -146,6 +159,14 @@ export default function Page() {
       }
       constraints.push("Ligar/desligar TV por Bluetooth depende de API/servico proprietario do fabricante.");
       constraints.push("Teclado e mouse virtual exigem pareamento HID real no dispositivo de destino.");
+    }
+
+    if (profileType === "speaker" || profileType === "headphones") {
+      if (hasMediaControl) {
+        actions.push("Play/Pause/Adiantar/Voltar via BLE Media Control Service");
+      } else {
+        constraints.push("Este audio device nao expôs o servico BLE de Media Control no navegador.");
+      }
     }
 
     if (isController) {
@@ -219,7 +240,7 @@ export default function Page() {
     if (!selectedDevice || !selectedDevice.connected) return;
     if (telemetryByDeviceId[selectedDevice.id]) return;
     void refreshDeviceTelemetry(selectedDevice);
-  }, [selectedDevice, telemetryByDeviceId]);
+  }, [selectedDeviceId, selectedDevice?.connected]);
 
   useEffect(() => {
     const unlock = () => {
@@ -295,7 +316,20 @@ export default function Page() {
     );
   };
 
-  const refreshDeviceTelemetry = async (device: BluetoothDeviceEntry) => {
+  const refreshDeviceTelemetry = async (device: BluetoothDeviceEntry, options?: { force?: boolean }) => {
+    const force = options?.force === true;
+    const now = Date.now();
+    const lastAttempt = telemetryLastAttemptAtRef.current[device.id] ?? 0;
+    if (!force && telemetryInFlightRef.current[device.id]) {
+      return;
+    }
+    if (!force && now - lastAttempt < 1800) {
+      return;
+    }
+
+    telemetryInFlightRef.current[device.id] = true;
+    telemetryLastAttemptAtRef.current[device.id] = now;
+
     try {
       addLog(`Coletando telemetria GATT de ${device.name}...`, "info");
       const snapshot = await collectGattTelemetry(device.nativeDevice);
@@ -316,6 +350,32 @@ export default function Page() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Falha ao coletar telemetria.";
       addLog(`Telemetria falhou: ${message}`, "error");
+    } finally {
+      telemetryInFlightRef.current[device.id] = false;
+    }
+  };
+
+  const runMediaAction = async (action: MediaControlAction) => {
+    if (!selectedDevice) {
+      addLog("Selecione um dispositivo para enviar comando de midia.", "warning");
+      return;
+    }
+
+    if (!selectedDevice.connected) {
+      addLog("Conecte o dispositivo antes de usar controles de midia.", "warning");
+      return;
+    }
+
+    try {
+      setMediaControlBusy(true);
+      await sendBleMediaControl(selectedDevice.nativeDevice, action);
+      addLog(`Comando de midia enviado: ${action}`, "success");
+      await refreshDeviceTelemetry(selectedDevice, { force: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha no controle de midia.";
+      addLog(`Controle de midia indisponivel: ${message}`, "warning");
+    } finally {
+      setMediaControlBusy(false);
     }
   };
 
@@ -432,7 +492,7 @@ export default function Page() {
         ),
       );
       syncDeviceConnection(selectedDevice.nativeDevice, true);
-      await refreshDeviceTelemetry(selectedDevice);
+      await refreshDeviceTelemetry(selectedDevice, { force: true });
       playAudio("connected");
       addLog(
         `Conexao ativa com ${selectedDevice.name} | perfil=${detection.profile.title} | servicos=${detection.discoveredServices.length}`,
@@ -657,7 +717,7 @@ export default function Page() {
                   <button
                     type="button"
                     onClick={() => {
-                      void refreshDeviceTelemetry(selectedDevice);
+                      void refreshDeviceTelemetry(selectedDevice, { force: true });
                     }}
                     className="inline-flex items-center gap-1 rounded-md border border-cyan-300/30 bg-cyan-400/10 px-2 py-1 text-[10px] text-cyan-100 transition hover:bg-cyan-400/20"
                   >
@@ -742,6 +802,77 @@ export default function Page() {
                     {selectedDeviceInsights.constraints.map((item) => (
                       <p key={item}>{item}</p>
                     ))}
+                  </div>
+                )}
+
+                {(selectedDevice.profileType === "speaker" || selectedDevice.profileType === "headphones") && (
+                  <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                    <p className="mb-2 text-xs font-medium text-slate-200">Controle de Midia (Caixa/Fone)</p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      <button
+                        type="button"
+                        disabled={
+                          mediaControlBusy ||
+                          (!selectedDevice.capabilityFlags.includes("MediaControl") &&
+                            !selectedDevice.discoveredServices.includes("00001848-0000-1000-8000-00805f9b34fb") &&
+                            !selectedDevice.discoveredServices.includes("00001849-0000-1000-8000-00805f9b34fb"))
+                        }
+                        onClick={() => {
+                          void runMediaAction("play");
+                        }}
+                        className="inline-flex items-center justify-center gap-1 rounded-md border border-emerald-300/30 bg-emerald-400/10 px-2 py-2 text-xs text-emerald-100 disabled:opacity-60"
+                      >
+                        <Play className="h-3.5 w-3.5" /> Play
+                      </button>
+                      <button
+                        type="button"
+                        disabled={
+                          mediaControlBusy ||
+                          (!selectedDevice.capabilityFlags.includes("MediaControl") &&
+                            !selectedDevice.discoveredServices.includes("00001848-0000-1000-8000-00805f9b34fb") &&
+                            !selectedDevice.discoveredServices.includes("00001849-0000-1000-8000-00805f9b34fb"))
+                        }
+                        onClick={() => {
+                          void runMediaAction("pause");
+                        }}
+                        className="inline-flex items-center justify-center gap-1 rounded-md border border-yellow-300/30 bg-yellow-400/10 px-2 py-2 text-xs text-yellow-100 disabled:opacity-60"
+                      >
+                        <Pause className="h-3.5 w-3.5" /> Pause
+                      </button>
+                      <button
+                        type="button"
+                        disabled={
+                          mediaControlBusy ||
+                          (!selectedDevice.capabilityFlags.includes("MediaControl") &&
+                            !selectedDevice.discoveredServices.includes("00001848-0000-1000-8000-00805f9b34fb") &&
+                            !selectedDevice.discoveredServices.includes("00001849-0000-1000-8000-00805f9b34fb"))
+                        }
+                        onClick={() => {
+                          void runMediaAction("next");
+                        }}
+                        className="inline-flex items-center justify-center gap-1 rounded-md border border-cyan-300/30 bg-cyan-400/10 px-2 py-2 text-xs text-cyan-100 disabled:opacity-60"
+                      >
+                        <SkipForward className="h-3.5 w-3.5" /> Adiantar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={
+                          mediaControlBusy ||
+                          (!selectedDevice.capabilityFlags.includes("MediaControl") &&
+                            !selectedDevice.discoveredServices.includes("00001848-0000-1000-8000-00805f9b34fb") &&
+                            !selectedDevice.discoveredServices.includes("00001849-0000-1000-8000-00805f9b34fb"))
+                        }
+                        onClick={() => {
+                          void runMediaAction("previous");
+                        }}
+                        className="inline-flex items-center justify-center gap-1 rounded-md border border-violet-300/30 bg-violet-400/10 px-2 py-2 text-xs text-violet-100 disabled:opacity-60"
+                      >
+                        <SkipBack className="h-3.5 w-3.5" /> Voltar
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[11px] text-slate-400">
+                      Os comandos funcionam quando o dispositivo expõe BLE Media Control Service (0x1848/0x1849).
+                    </p>
                   </div>
                 )}
 

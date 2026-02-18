@@ -183,8 +183,8 @@ const SERVICE_SIGNATURES: Record<DeviceProfileType, string[]> = {
   "universal-controller": ["00001812-0000-1000-8000-00805f9b34fb"],
   tv: [],
   "tv-remote": ["00001812-0000-1000-8000-00805f9b34fb"],
-  headphones: ["0000110b-0000-1000-8000-00805f9b34fb", "0000110e-0000-1000-8000-00805f9b34fb"],
-  speaker: ["0000110b-0000-1000-8000-00805f9b34fb"],
+  headphones: ["00001848-0000-1000-8000-00805f9b34fb", "00001849-0000-1000-8000-00805f9b34fb"],
+  speaker: ["00001848-0000-1000-8000-00805f9b34fb", "00001849-0000-1000-8000-00805f9b34fb"],
   smartwatch: [
     "0000180d-0000-1000-8000-00805f9b34fb",
     "0000180f-0000-1000-8000-00805f9b34fb",
@@ -329,6 +329,14 @@ export async function autoDetectBluetoothDevice(
 
     if (discoveredServices.some((uuid) => uuid === "0000180d-0000-1000-8000-00805f9b34fb")) {
       capabilityFlags.push("HeartRate");
+    }
+
+    if (
+      discoveredServices.some(
+        (uuid) => uuid === "00001848-0000-1000-8000-00805f9b34fb" || uuid === "00001849-0000-1000-8000-00805f9b34fb",
+      )
+    ) {
+      capabilityFlags.push("MediaControl");
     }
 
     const healthSignals =

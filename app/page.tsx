@@ -561,19 +561,46 @@ export default function Page() {
             )}
 
             <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-              <p className="mb-2 text-sm text-slate-300">Transferencias</p>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="text-sm text-slate-300">Transferencias</p>
+                {transfers.length > 0 && (
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300">
+                    {transfers.length} item{transfers.length > 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
               {transfers.length === 0 && <p className="text-sm text-slate-400">Sem transferencias nesta sessao.</p>}
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {transfers.slice().reverse().map((transfer) => (
-                  <div key={transfer.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs">
-                    <div className="mb-1 flex items-center justify-between text-slate-100">
-                      <span>{transfer.fileName}</span>
-                      <span>{transfer.status}</span>
+                  <div
+                    key={transfer.id}
+                    className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs sm:rounded-lg sm:bg-white/[0.03]"
+                  >
+                    <div className="mb-2 flex flex-col gap-1.5 sm:mb-1 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="max-w-full break-all text-[13px] font-medium text-slate-100 sm:text-xs">
+                        {transfer.fileName}
+                      </p>
+                      <span
+                        className={`inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                          transfer.status === "done"
+                            ? "border-emerald-300/40 bg-emerald-400/10 text-emerald-200"
+                            : transfer.status === "transferring"
+                              ? "border-cyan-300/40 bg-cyan-400/10 text-cyan-200"
+                              : transfer.status === "error"
+                                ? "border-red-300/40 bg-red-400/10 text-red-200"
+                                : "border-amber-300/40 bg-amber-400/10 text-amber-200"
+                        }`}
+                      >
+                        {transfer.status}
+                      </span>
                     </div>
-                    <div className="h-2 rounded bg-white/10">
+                    <div className="h-2.5 overflow-hidden rounded bg-white/10 sm:h-2">
                       <div className="h-full rounded bg-emerald-400" style={{ width: `${transfer.progress}%` }} />
                     </div>
-                    <p className="mt-1 text-slate-400">{transfer.deviceName}</p>
+                    <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-slate-400 sm:mt-1 sm:text-[10px]">
+                      <p className="truncate">{transfer.deviceName}</p>
+                      <span className="shrink-0 text-slate-300">{transfer.progress}%</span>
+                    </div>
                   </div>
                 ))}
               </div>

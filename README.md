@@ -1,5 +1,5 @@
 
-# Bluetooth File Transfer Web App <img src="brand-assets\Bluetooth_Icon2.png" align="right" width="175">
+# Bluetooth File Transfer Web App <img src="brand-assets\Bluetooth_Icon2.png" align="right" width="185">
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/erikraft/Bluetooth-Center?utm_source=oss&utm_medium=github&utm_campaign=erikraft%2FBluetooth-Center&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 <br>
 This is a modern **Web Bluetooth application** that allows you to:
@@ -16,7 +16,9 @@ This is a modern **Web Bluetooth application** that allows you to:
 - Enjoy a mobile-friendly and desktop-compatible interface
 
 
-> <img src="brand-assets\Use Bluetooth Web System.svg" align="right" width="175"> ⚠️ This project uses the experimental **Web Bluetooth API**, which only works on supported browsers like **Chrome** and only under **HTTPS** or `localhost`.
+> <img src="brand-assets/Use Bluetooth Web System.png" align="right" width="295"> ⚠️ This project uses the experimental **Web Bluetooth API**, which only works on supported browsers like **Chrome** and only under **HTTPS** or `localhost`.
+
+<br>
 
 ## Run locally
 

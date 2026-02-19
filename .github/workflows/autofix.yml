@@ -10,6 +10,8 @@ on:
 jobs:
   autofix:
     name: Run autofix and create PR
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
 
     steps:

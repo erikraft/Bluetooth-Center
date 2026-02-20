@@ -1,6 +1,6 @@
 ﻿Bluetooth Center UUID Manifest
 Generated: 2026-02-17
-Total UUIDs in source literals: 
+Total UUIDs in source literals:
 165
 Bulk pool size: 1200000
 Runtime UUID target per session: 350000

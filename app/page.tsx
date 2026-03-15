@@ -626,7 +626,7 @@ export default function Page() {
   };
 
   return (
-    <main ref={rootRef} className="min-h-screen bg-[radial-gradient(circle_at_15%_10%,#1e293b_0%,#0f172a_45%,#020617_100%)] text-white">
+    <main ref={rootRef} className="h-screen bg-[radial-gradient(circle_at_15%_10%,#1e293b_0%,#0f172a_45%,#020617_100%)] text-white overflow-hidden">
       <audio ref={waitingAudioRef} src="/waiting.mp3" preload="auto" />
       <audio ref={connectedAudioRef} src="/connected.mp3" preload="auto" />
       <audio ref={disconnectedAudioRef} src="/disconnected.mp3" preload="auto" />
